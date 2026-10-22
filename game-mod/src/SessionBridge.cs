@@ -17,6 +17,24 @@ namespace CozyClaude
         public bool Error;
         public int Subagents;
         public string Problem; // why sessions can't be read at all, if they can't
+        // what the most recently active working session is doing, for the bubble
+        public string Activity;
+        // every live session, with its task list (empty when Claude made none)
+        public List<LiveSession> Sessions = new();
+    }
+
+    internal sealed class LiveSession
+    {
+        public string Sid;
+        public string Project;
+        public List<SessionTask> Tasks = new();
+    }
+
+    internal sealed class SessionTask
+    {
+        public string id { get; set; }
+        public string subject { get; set; }
+        public bool done { get; set; }
     }
 
     // Reads %LOCALAPPDATA%\CozyClaude\sessions\*.json on a background thread, so file IO never touches the
@@ -57,6 +75,7 @@ namespace CozyClaude
             var secret = File.ReadAllText(Paths.Secret).Trim();
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             var snap = new Snapshot();
+            long activityAt = 0;
             foreach (var file in Directory.GetFiles(Paths.Sessions, "*.json"))
             {
                 var s = Read(file);
@@ -74,6 +93,13 @@ namespace CozyClaude
                 if (s.waiting > 0) snap.Waiting++;
                 if (s.error && now - s.errorAt < ErrorStaleMs) snap.Error = true;
                 if (quiet < WorkingStaleMs) snap.Subagents += s.agents;
+                if (s.working && quiet < WorkingStaleMs && !string.IsNullOrEmpty(s.activity) && s.eventAt > activityAt)
+                {
+                    snap.Activity = s.activity;
+                    activityAt = s.eventAt;
+                }
+                if (!string.IsNullOrEmpty(s.sid))
+                    snap.Sessions.Add(new LiveSession { Sid = s.sid, Project = s.project ?? "", Tasks = s.tasks ?? new List<SessionTask>() });
             }
             return snap;
         }
@@ -109,6 +135,9 @@ namespace CozyClaude
             public long errorAt { get; set; }
             public int agents { get; set; }
             public bool ended { get; set; }
+            public string project { get; set; }
+            public string activity { get; set; }
+            public List<SessionTask> tasks { get; set; }
         }
     }
 }

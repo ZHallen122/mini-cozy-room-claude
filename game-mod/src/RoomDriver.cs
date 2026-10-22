@@ -22,6 +22,8 @@ namespace CozyClaude
         private readonly Journal _journal;
         private readonly Bubble _bubble = new();
         private readonly PetSquad _pets = new();
+        private readonly TaskSync _tasks;
+        private readonly Attention _attention;
         private Il2Cpp.TimerManager _timerManager;
         private bool _timerStartedByMod;
         private bool _rainOn;
@@ -40,6 +42,8 @@ namespace CozyClaude
             _cfg = cfg;
             _health = health;
             _journal = Journal.Load();
+            _tasks = new TaskSync(cfg, health);
+            _attention = new Attention(cfg, health);
             _rainOn = _journal.Rain != null; // rain left over from a crash gets switched off on the first tick
         }
 
@@ -61,7 +65,9 @@ namespace CozyClaude
             if (target != Applied) Transition(target);
 
             ForgetRestoreOnceSaved();
-            UpdateWaiting(s);
+            UpdateBubble(s);
+            _attention.Update(Applied == Phase.Off ? 0 : s.Waiting);
+            _tasks.Tick(s);
             UpdateRain(s.Error && _cfg.RainOnError && s.AliveSessions > 0);
             _health.Run(Feature.Subagents, () => _pets.Sync(Applied == Phase.Off ? 0 : Mathf.Min(s.Subagents, _cfg.MaxSubagentPets)));
         }
@@ -100,6 +106,14 @@ namespace CozyClaude
                 _ = GameInfo.Instance.Pets.Count;
             });
             _health.Run(Feature.Status, () => Need(Singleton<Il2Cppcozyhouse.musicplayer.MusicPlayer>.Instance, "MusicPlayer"));
+            _tasks.SelfCheck();
+            _attention.SelfCheck();
+        }
+
+        // Every frame: keep the bubble over the character (the rest of the driver runs at 4 Hz).
+        public void FollowBubble()
+        {
+            if (_bubble.Visible) _health.Run(Feature.Waiting, _bubble.Follow);
         }
 
         // Called when the game quits: put the room back so the save never keeps Claude's state.
@@ -109,6 +123,7 @@ namespace CozyClaude
             PauseTimer();
             UpdateRain(false);
             _health.Run(Feature.Restore, RestoreActivity);
+            _attention.Stop();
             _bubble.Destroy();
             _pets.Clear();
         }
@@ -146,6 +161,7 @@ namespace CozyClaude
             {
                 _bubble.Hide();
                 _pets.Clear();
+                _attention.Stop();
                 _health.Note(Feature.Guard, "联机房间中，暂停联动");
             }
             else if (!blocked && _blocked)
@@ -288,25 +304,34 @@ namespace CozyClaude
             world.UpdateActivityEffect();
         }
 
-        private void UpdateWaiting(Snapshot s)
+        // The bubble shows the "waiting for you" reminder first; otherwise, while Claude works, what it is doing.
+        private void UpdateBubble(Snapshot s)
         {
-            if (s.Waiting == 0 || Applied == Phase.Off)
+            if (Applied == Phase.Off)
             {
                 _bubble.Hide();
                 return;
             }
-            _health.Run(Feature.Waiting, () =>
+            if (s.Waiting > 0 && !_health.IsBroken(Feature.Waiting))
             {
-                _bubble.Show(s.Waiting > 1 ? $"{_cfg.WaitingText} ×{s.Waiting}" : _cfg.WaitingText);
-                _bubble.Follow();
-                if (_cfg.PetNudgeWhileWaiting && Time.unscaledTime >= _nextNudge)
+                _health.Run(Feature.Waiting, () =>
                 {
-                    _nextNudge = Time.unscaledTime + 6f;
-                    var pet = Singleton<World>.Instance.petScript;
-                    if (pet != null && pet.gameObject.activeInHierarchy) pet.TouchPetReAction();
-                }
-            });
-            if (_health.IsBroken(Feature.Waiting)) _bubble.Hide();
+                    _bubble.Show(s.Waiting > 1 ? $"{_cfg.WaitingText} ×{s.Waiting}" : _cfg.WaitingText);
+                    if (_cfg.PetNudgeWhileWaiting && Time.unscaledTime >= _nextNudge)
+                    {
+                        _nextNudge = Time.unscaledTime + 6f;
+                        var pet = Singleton<World>.Instance.petScript;
+                        if (pet != null && pet.gameObject.activeInHierarchy) pet.TouchPetReAction();
+                    }
+                });
+                if (!_health.IsBroken(Feature.Waiting)) return;
+            }
+            if (_cfg.ShowActivity && Applied == Phase.Working && !string.IsNullOrEmpty(s.Activity) && !_health.IsBroken(Feature.Activity))
+            {
+                _health.Run(Feature.Activity, () => _bubble.Show(s.Activity, emphasized: false));
+                if (!_health.IsBroken(Feature.Activity)) return;
+            }
+            _bubble.Hide();
         }
 
         private Il2Cpp.TimerManager Timers()

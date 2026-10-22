@@ -3,7 +3,7 @@ using System.IO;
 using MelonLoader;
 using MelonLoader.Utils;
 
-[assembly: MelonInfo(typeof(CozyClaude.Mod), "CozyClaude", "0.3.0", "ZHallen122")]
+[assembly: MelonInfo(typeof(CozyClaude.Mod), "CozyClaude", "0.4.0", "ZHallen122")]
 [assembly: MelonGame("TesseractStudio", "MiniCozyRoom")]
 
 namespace CozyClaude
@@ -51,11 +51,12 @@ namespace CozyClaude
                 if (ready)
                 {
                     // the bubble follows the character every frame; everything else runs at 4 Hz
-                    if (UnityEngine.Time.unscaledTime >= _nextApply || snap.Waiting > 0)
+                    if (UnityEngine.Time.unscaledTime >= _nextApply)
                     {
                         _nextApply = UnityEngine.Time.unscaledTime + 0.25f;
                         _room.Tick(snap);
                     }
+                    _room.FollowBubble();
                     _actions.Tick();
                     _health.FlushToasts();
                 }
@@ -99,6 +100,7 @@ namespace CozyClaude
         {
             var s = _bridge.Latest;
             return $"sessions={s.AliveSessions} working={s.Working} waiting={s.Waiting} error={s.Error} subagents={s.Subagents} problem={s.Problem}\n" +
+                   $"activity={s.Activity} tasks={string.Join(" | ", System.Linq.Enumerable.Select(s.Sessions, x => $"{x.Project}:{x.Tasks.Count}"))}\n" +
                    $"phase={_room.Applied} blocked={_room.Blocked} today={_status.TodaySeconds:0}s\n" +
                    string.Join("\n", System.Linq.Enumerable.Select(_health.Report(), kv => $"  {kv.Key}: {kv.Value}"));
         }
@@ -194,6 +196,15 @@ namespace CozyClaude
                 }
                 case "streset": UnityEngine.Object.FindObjectOfType<Il2Cpp.TimerManager>().SessionTimerSystem.Reset(); break;
                 case "coop": RoomDriver.SimulateCoop = arg == "on"; break;
+                case "tray":
+                    emit($"tray init={Il2CppUtils.TrayIcon.IsInitialized()} hiddenFromTaskbar={Il2CppUtils.TrayIcon.isHiddenFromTaskbar} tip='{Il2CppUtils.TrayIcon.notifyIconData.szTip}' hwnd={Il2CppUtils.TrayIcon.unityWindowHandle}");
+                    break;
+                case "retitle":
+                {
+                    var parts = arg.Split(' ', 2);
+                    Il2CppTS.Singleton<Il2Cpp.TodoListManager>.Instance.GetCache(int.Parse(parts[0])).GetTodolistUserData().SetTitle(parts[1]);
+                    break;
+                }
                 case "petkey": PetSquad.ForceKey = int.Parse(arg); break;
                 case "exp": Il2Cppcozyhouse.Player.Instance.UserData.playerUserData.exp = int.Parse(arg); break;
                 default: emit("unknown command " + cmd); break;

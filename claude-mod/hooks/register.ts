@@ -1,5 +1,8 @@
 import type { EngineInterface, Register } from 'claude-code'
-import { apply, type CozyEvent, fileName, fresh, type RoomStatus, type SessionState, serialize, statusLine } from './state'
+import {
+  apply, type CozyEvent, describeTool, fileName, fresh, projectName, type RoomStatus, type SessionState, serialize, statusLine,
+  taskIdFrom,
+} from './state'
 import { type CommandReply, commandFile, replyText, type RoomTool, roomGate, TIMEOUT_TEXT, TOOLS } from './actions'
 
 // Bridges Claude Code to the CozyClaude game mod through %LOCALAPPDATA%\CozyClaude:
@@ -55,11 +58,12 @@ function persist($: EngineInterface, s: SessionState): void {
     .catch(() => {})
 }
 
-function record($: EngineInterface, sid: string | undefined, ev: CozyEvent): void {
+function record($: EngineInterface, sid: string | undefined, ev: CozyEvent, cwd?: string): void {
   try {
     if (!sid) return
     let s = sessions.get(sid)
     if (!s) { s = fresh(sid, Date.now()); sessions.set(sid, s) }
+    if (cwd) s.project = projectName(cwd)
     apply(s, ev, Date.now())
     persist($, s)
     startTimers($)
@@ -68,8 +72,22 @@ function record($: EngineInterface, sid: string | undefined, ev: CozyEvent): voi
   }
 }
 
-function recordCurrent($: EngineInterface, ev: CozyEvent): void {
-  $.session.id().then(sid => record($, sid, ev), () => {})
+function recordCurrent($: EngineInterface, events: CozyEvent[]): void {
+  $.session.id().then(sid => { for (const ev of events) record($, sid, ev) }, () => {})
+}
+
+// What a tool call tells the room: the bubble line, and task-list changes for TaskUpdate / TodoWrite.
+function preToolEvents(tool: string, input: Record<string, unknown>): CozyEvent[] {
+  const events: CozyEvent[] = [{ kind: 'PreToolUse', activity: describeTool(tool, input) }]
+  const str = (v: unknown) => (typeof v === 'string' ? v : undefined)
+  if (tool === 'TaskUpdate' && (typeof input.taskId === 'string' || typeof input.taskId === 'number'))
+    events.push({ kind: 'TaskUpdate', id: String(input.taskId), status: str(input.status), subject: str(input.subject) })
+  if (tool === 'TodoWrite' && Array.isArray(input.todos))
+    events.push({
+      kind: 'TodoWrite',
+      todos: input.todos.map(t => ({ content: str((t as Record<string, unknown>)?.content) ?? '', status: str((t as Record<string, unknown>)?.status) ?? '' })),
+    })
+  return events
 }
 
 function startTimers($: EngineInterface): void {
@@ -150,51 +168,70 @@ export const register: Register = on => {
   }
 
   on('classic.SessionStart', ($, e, next) => {
-    record($, e.session_id, { kind: 'SessionStart', source: e.source })
+    record($, e.session_id, { kind: 'SessionStart', source: e.source }, e.cwd)
     return next(e)
   }).catch(($, e, next) => next(e))
   on('classic.UserPromptSubmit', ($, e, next) => {
-    record($, e.session_id, { kind: 'UserPromptSubmit' })
+    record($, e.session_id, { kind: 'UserPromptSubmit' }, e.cwd)
     return next(e)
   }).catch(($, e, next) => next(e))
   on('classic.PreToolUse', ($, e, next) => {
-    recordCurrent($, { kind: 'PreToolUse' })
+    try {
+      const input = e as unknown as Record<string, unknown>
+      recordCurrent($, preToolEvents(String(input.tool ?? ''), input))
+    } catch {
+      // the bubble line is cosmetic
+    }
     return next(e)
   }).catch(($, e, next) => next(e))
   on('classic.PermissionRequest', ($, e, next) => {
-    record($, e.session_id, { kind: 'PermissionRequest', agent: e.agent_id })
+    record($, e.session_id, { kind: 'PermissionRequest', agent: e.agent_id }, e.cwd)
     return next(e)
   }).catch(($, e, next) => next(e))
   on('classic.Notification', ($, e, next) => {
-    record($, e.session_id, { kind: 'Notification', agent: e.agent_id, type: e.notification_type })
+    record($, e.session_id, { kind: 'Notification', agent: e.agent_id, type: e.notification_type }, e.cwd)
     return next(e)
   }).catch(($, e, next) => next(e))
   on('classic.PostToolUse', ($, e, next) => {
-    record($, e.session_id, { kind: 'PostToolUse', agent: e.agent_id })
+    record($, e.session_id, { kind: 'PostToolUse', agent: e.agent_id }, e.cwd)
+    if (e.tool_name === 'TaskCreate') {
+      // backs up TaskCreated, in case that event doesn't fire for this kind of task
+      const input = (e.tool_input ?? {}) as Record<string, unknown>
+      const id = taskIdFrom(e.tool_response)
+      if (id && typeof input.subject === 'string') record($, e.session_id, { kind: 'TaskCreated', id, subject: input.subject })
+    }
+    return next(e)
+  }).catch(($, e, next) => next(e))
+  on('classic.TaskCreated', ($, e, next) => {
+    record($, e.session_id, { kind: 'TaskCreated', id: e.task_id, subject: e.task_subject }, e.cwd)
+    return next(e)
+  }).catch(($, e, next) => next(e))
+  on('classic.TaskCompleted', ($, e, next) => {
+    record($, e.session_id, { kind: 'TaskCompleted', id: e.task_id, subject: e.task_subject }, e.cwd)
     return next(e)
   }).catch(($, e, next) => next(e))
   on('classic.PostToolUseFailure', ($, e, next) => {
-    record($, e.session_id, { kind: 'PostToolUseFailure', agent: e.agent_id, interrupted: e.is_interrupt === true })
+    record($, e.session_id, { kind: 'PostToolUseFailure', agent: e.agent_id, interrupted: e.is_interrupt === true }, e.cwd)
     return next(e)
   }).catch(($, e, next) => next(e))
   on('classic.Stop', ($, e, next) => {
-    record($, e.session_id, { kind: 'Stop' })
+    record($, e.session_id, { kind: 'Stop' }, e.cwd)
     return next(e)
   }).catch(($, e, next) => next(e))
   on('classic.StopFailure', ($, e, next) => {
-    record($, e.session_id, { kind: 'StopFailure' })
+    record($, e.session_id, { kind: 'StopFailure' }, e.cwd)
     return next(e)
   }).catch(($, e, next) => next(e))
   on('classic.SubagentStart', ($, e, next) => {
-    record($, e.session_id, { kind: 'SubagentStart', agent: e.agent_id })
+    record($, e.session_id, { kind: 'SubagentStart', agent: e.agent_id }, e.cwd)
     return next(e)
   }).catch(($, e, next) => next(e))
   on('classic.SubagentStop', ($, e, next) => {
-    record($, e.session_id, { kind: 'SubagentStop', agent: e.agent_id })
+    record($, e.session_id, { kind: 'SubagentStop', agent: e.agent_id }, e.cwd)
     return next(e)
   }).catch(($, e, next) => next(e))
   on('classic.SessionEnd', ($, e, next) => {
-    record($, e.session_id, { kind: 'SessionEnd' })
+    record($, e.session_id, { kind: 'SessionEnd' }, e.cwd)
     return next(e)
   }).catch(($, e, next) => next(e))
 }

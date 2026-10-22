@@ -78,8 +78,9 @@ namespace CozyClaude
             var content = cmd.Str("content", 4000);
             if (string.IsNullOrEmpty(content)) return CommandResult.Fail("memo 内容是空的。");
             if (!Ledger.TryLoad(out var ledger, out var problem)) return CommandResult.Fail(problem);
-            if (ledger.Notes.Count >= MaxNotes)
-                return CommandResult.Fail($"Claude 已经加了 {ledger.Notes.Count} 条 memo/todo（上限 {MaxNotes}），先让用户清掉一些。");
+            var added = ledger.Notes.Count(n => n.Kind != "tasks");
+            if (added >= MaxNotes)
+                return CommandResult.Fail($"Claude 已经加了 {added} 条 memo/todo（上限 {MaxNotes}），先让用户清掉一些。");
             var memos = Singleton<Il2Cpp.MemoManager>.Instance;
             var before = Keys(memos._cacheDic);
             // the "memos created" stat belongs to the player; a memo Claude adds doesn't count
@@ -108,8 +109,9 @@ namespace CozyClaude
             var items = cmd.List("items", 30, 300);
             if (items.Count == 0) return CommandResult.Fail("todo 没有条目。");
             if (!Ledger.TryLoad(out var ledger, out var problem)) return CommandResult.Fail(problem);
-            if (ledger.Notes.Count >= MaxNotes)
-                return CommandResult.Fail($"Claude 已经加了 {ledger.Notes.Count} 条 memo/todo（上限 {MaxNotes}），先让用户清掉一些。");
+            var added = ledger.Notes.Count(n => n.Kind != "tasks");
+            if (added >= MaxNotes)
+                return CommandResult.Fail($"Claude 已经加了 {added} 条 memo/todo（上限 {MaxNotes}），先让用户清掉一些。");
             var todos = Singleton<Il2Cpp.TodoListManager>.Instance;
             var before = Keys(todos._cacheDic);
             if (!todos.AddNewTodoList(1, false))
@@ -391,10 +393,15 @@ namespace CozyClaude
 
             public sealed class Entry
             {
+                // "memo", "todo", or "tasks" (a session's mirrored task list, kept by TaskSync)
                 public string Kind { get; set; }
                 public int Key { get; set; }
                 public string Title { get; set; }
                 public long At { get; set; }
+                // tasks only: the session, task id -> todo item key, and whether the player took the list over
+                public string Sid { get; set; }
+                public Dictionary<string, int> Items { get; set; }
+                public bool Suppressed { get; set; }
             }
 
             // An unreadable ledger stops the operation rather than forget which notes are Claude's.

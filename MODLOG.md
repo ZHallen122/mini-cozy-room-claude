@@ -77,6 +77,18 @@ Journal for the mod. Anything not written here is lost at the next context compa
     `plugin.json` version, `claude plugin marketplace update cozy-room-local`, `claude plugin update ...`.
 17. Plugin tool hooks have a 10 s budget and `$.clock.sleep` counts against it; `$.fs` has no delete, so an
     abandoned command is overwritten with `{"cancelled":true}` and the game also drops anything older than 8 s.
+18. **`UI_TodoList.SetData(cache)` flushes every row's input field into the data before rebuilding**, so text
+    changed in the data while the window is open is overwritten with the old text. Redraw an existing window with
+    `RefreshList(keepScroll: true, suppressFlush: true)`; only a just-created list uses `SetData`.
+19. `TodoItemCache.Complete()` bumps `completeAmountTodolist`. TaskSync snapshots every int stat of
+    `PlayerUserData` by reflection and writes back whatever changed (`StatSnapshot`).
+20. `TrayIcon` (namespace `Il2CppUtils`) caches the game window (`unityWindowHandle`), knows whether it is hidden in
+    the tray (`isHiddenFromTaskbar`), and exposes `UpdateTooltip`; the original tooltip is in
+    `notifyIconData.szTip` ("迷你舒适房间：Lo-Fi" in Chinese). `FlashWindowEx(FLASHW_TRAY|FLASHW_TIMER)` on that
+    window flashes the taskbar button until `FLASHW_STOP`.
+21. Claude Code's task list comes two ways: TaskCreate/TaskUpdate (+ `classic.TaskCreated` / `TaskCompleted`
+    events, verified firing in `claude -p` 2.1.299) and legacy TodoWrite (whole list each call). The plugin handles
+    both; `PostToolUse` of TaskCreate is a backup for the id.
 
 ## Route
 
@@ -124,8 +136,35 @@ heartbeat; status line via `$.ui.status` from `room.json`.
   `C:\Code_Project\Open_source\mini-cozy-room-mod-save-backup\2026-10-21-v2\`.
 - Dev console additions: `stats`, `stat <field> <value>`, `streset`, `todoitems <key>`, `break <Feature>`.
 
+## Task list, activity line, hidden-window reminder (2026-10-22)
+
+- Plugin 0.3.0: session files gain `project` (cwd folder name), `activity` (one line from the tool about to run:
+  `describeTool`, e.g. 正在跑测试… / 在改 X / 思考中…) and `tasks` (`[{id, subject, done}]`, max 30).
+- Game mod 0.4.0:
+  - `TaskSync` mirrors each live session's tasks into a `[Claude] <project> 任务` todo list (ledger kind `tasks` with
+    `Sid` and task id → item key), ticks/renames/removes items, deletes the list when the session ends. A list the
+    player deleted or retitled is marked `Suppressed` and left alone.
+  - The bubble shows the waiting reminder first, otherwise the activity line in a quieter style (translucent, no
+    bob, smaller text); it follows the character every frame (`RoomDriver.FollowBubble`).
+  - `Attention`: only while the window is minimized/hidden and Claude waits — taskbar flash + tray tooltip; optional
+    timer sound (`Player.TimerSoundKey` through `AudioManager.PlayOneShot(..., Productivity)`) and window restore.
+  - Config gains `ShowActivity`, `SyncTaskList`, `AttentionWhenHidden`, `AttentionSound`, `AttentionRestoreWindow`;
+    `Config.Load` now writes new keys back into an existing `config.json`.
+- Verified in the real game: fake sessions (activity bubble, list created/ticked/renamed live/unticked/removed,
+  `completeAmountTodolist` kept at 20 on every tick), minimized window → tooltip "Claude 在等你确认" + flashing taskbar
+  button (screen capture), restored to "迷你舒适房间：Lo-Fi" and no flash when the waiting ended; visible window →
+  nothing. Real `claude -p` (haiku) with TaskCreate/TaskUpdate: list created 18:17:03, ticked 3×, removed 18:17:17
+  at session end; activity lines 思考中… / 正在跑命令… seen.
+- Not verified: `AttentionSound` and `AttentionRestoreWindow` (off by default); the "player took over the list"
+  path (same title check as v2's clear, which v2 verified).
+- Stats/notes diffed identical to the pre-test dump. Backups: `um backup` `20261022-180442.zip`; plain copy
+  `mini-cozy-room-mod-save-backup\2026-10-22-features\`. Dev console additions: `tray`, `retitle <key> <title>`.
+- `claude plugin test claude-mod`: 23 pass; `tsc` strict: clean.
+
 ## Log
 - 2026-10-21: backups; MelonLoader as `winmm.dll`; probe; full mod; plugin; verification above; plugin installed
   at user scope from the local folder marketplace `cozy-room-local`. Nothing committed.
 - 2026-10-21 (later): v2 active operations — plugin 0.2.0 tools + game mod 0.3.0 command channel; verified and
   restored as above. Nothing committed.
+- 2026-10-22: MelonLoader console hidden / start screen off / offline generation (`UserData\Loader.cfg`); task
+  list sync, activity line, hidden-window reminder (plugin 0.3.0, game mod 0.4.0).

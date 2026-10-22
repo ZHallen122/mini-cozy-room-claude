@@ -25,22 +25,36 @@ namespace CozyClaude
         public bool PetNudgeWhileWaiting { get; set; } = true;
         public string WaitingText { get; set; } = "Claude 在等你确认";
         public int MaxSubagentPets { get; set; } = 3;
+        // A line above the character on what Claude is doing ("正在跑测试…", "在改 README.md").
+        public bool ShowActivity { get; set; } = true;
+        // Mirror Claude's own task list into a "[Claude] <project> 任务" todo list, removed when the session ends.
+        public bool SyncTaskList { get; set; } = true;
+        // While the game is minimized or hidden in the tray and Claude waits for approval: flash the taskbar button
+        // and put the reminder in the tray tooltip. Optionally also play the player's timer sound, or bring the
+        // window back.
+        public bool AttentionWhenHidden { get; set; } = true;
+        public bool AttentionSound { get; set; } = false;
+        public bool AttentionRestoreWindow { get; set; } = false;
 
         public static Config Load()
         {
             try
             {
-                if (File.Exists(Paths.Config))
-                    return JsonSerializer.Deserialize<Config>(File.ReadAllText(Paths.Config)) ?? new Config();
-                var fresh = new Config();
-                Directory.CreateDirectory(Paths.Root);
                 var options = new JsonSerializerOptions
                 {
                     WriteIndented = true,
                     Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
                 };
-                Paths.WriteAtomic(Paths.Config, JsonSerializer.Serialize(fresh, options));
-                return fresh;
+                var old = File.Exists(Paths.Config) ? File.ReadAllText(Paths.Config) : null;
+                var cfg = old == null ? new Config() : JsonSerializer.Deserialize<Config>(old) ?? new Config();
+                // write it back so settings added by a newer version show up in the file, with their defaults
+                var text = JsonSerializer.Serialize(cfg, options);
+                if (text != old)
+                {
+                    Directory.CreateDirectory(Paths.Root);
+                    Paths.WriteAtomic(Paths.Config, text);
+                }
+                return cfg;
             }
             catch (Exception e)
             {

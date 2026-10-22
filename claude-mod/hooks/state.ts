@@ -1,5 +1,7 @@
 // Pure session-state logic, kept apart from the engine calls so it can be tested on its own.
 
+export type Task = { id: string; subject: string; done: boolean }
+
 export type SessionState = {
   sid: string
   startedAt: number
@@ -12,12 +14,22 @@ export type SessionState = {
   // running subagents
   agents: Set<string>
   ended: boolean
+  // folder name of the session's working directory, for the room's task list title
+  project: string
+  // one line on what Claude is doing right now, shown above the character; null when idle
+  activity: string | null
+  // Claude's own task list (TaskCreate/TaskUpdate or TodoWrite), in creation order
+  tasks: Task[]
 }
 
 export type CozyEvent =
   | { kind: 'SessionStart'; source?: string }
   | { kind: 'UserPromptSubmit' }
-  | { kind: 'PreToolUse'; agent?: string }
+  | { kind: 'PreToolUse'; agent?: string; activity?: string | null }
+  | { kind: 'TaskCreated'; id: string; subject: string }
+  | { kind: 'TaskCompleted'; id: string; subject: string }
+  | { kind: 'TaskUpdate'; id: string; status?: string; subject?: string }
+  | { kind: 'TodoWrite'; todos: { content: string; status: string }[] }
   | { kind: 'PermissionRequest'; agent?: string }
   | { kind: 'Notification'; agent?: string; type?: string }
   | { kind: 'PostToolUse'; agent?: string }
@@ -31,8 +43,28 @@ export type CozyEvent =
 export function fresh(sid: string, now: number): SessionState {
   return {
     sid, startedAt: now, eventAt: now, working: false, waiting: new Set(), error: false, errorAt: 0,
-    agents: new Set(), ended: false,
+    agents: new Set(), ended: false, project: '', activity: null, tasks: [],
   }
+}
+
+const MAX_TASKS = 30
+const MAX_SUBJECT = 80
+const THINKING = '思考中…'
+
+function clip(text: string, max: number): string {
+  const t = text.replace(/\s+/g, ' ').trim()
+  return t.length > max ? t.slice(0, max - 1) + '…' : t
+}
+
+function upsertTask(s: SessionState, id: string, subject: string | undefined, done: boolean | undefined): void {
+  let task = s.tasks.find(t => t.id === id)
+  if (!task) {
+    if (s.tasks.length >= MAX_TASKS || !subject) return
+    task = { id, subject: clip(subject, MAX_SUBJECT), done: false }
+    s.tasks.push(task)
+  }
+  if (subject) task.subject = clip(subject, MAX_SUBJECT)
+  if (done !== undefined) task.done = done
 }
 
 export function apply(s: SessionState, ev: CozyEvent, now: number): void {
@@ -40,14 +72,30 @@ export function apply(s: SessionState, ev: CozyEvent, now: number): void {
   const who = 'agent' in ev && ev.agent ? ev.agent : 'main'
   switch (ev.kind) {
     case 'SessionStart':
-      s.ended = false; s.working = false; s.waiting.clear(); s.error = false
-      if (ev.source !== 'compact') s.agents.clear()
+      s.ended = false; s.working = false; s.waiting.clear(); s.error = false; s.activity = null
+      if (ev.source !== 'compact') { s.agents.clear(); s.tasks = [] }
       break
     case 'UserPromptSubmit':
-      s.working = true; s.waiting.clear(); s.error = false
+      s.working = true; s.waiting.clear(); s.error = false; s.activity = THINKING
       break
     case 'PreToolUse':
       s.working = true; s.waiting.delete(who)
+      if (ev.activity !== undefined) s.activity = ev.activity
+      break
+    case 'TaskCreated':
+      upsertTask(s, ev.id, ev.subject, false)
+      break
+    case 'TaskCompleted':
+      upsertTask(s, ev.id, ev.subject, true)
+      break
+    case 'TaskUpdate':
+      if (ev.status === 'deleted') s.tasks = s.tasks.filter(t => t.id !== ev.id)
+      else upsertTask(s, ev.id, ev.subject, ev.status === undefined ? undefined : ev.status === 'completed')
+      break
+    case 'TodoWrite':
+      // TodoWrite always sends the whole list; its items have no ids, so the text is the identity
+      s.tasks = ev.todos.filter(t => t.content).slice(0, MAX_TASKS)
+        .map(t => ({ id: 'todo:' + clip(t.content, MAX_SUBJECT), subject: clip(t.content, MAX_SUBJECT), done: t.status === 'completed' }))
       break
     case 'PermissionRequest':
       s.working = true; s.waiting.add(who)
@@ -57,17 +105,17 @@ export function apply(s: SessionState, ev: CozyEvent, now: number): void {
       break
     case 'PostToolUse':
       // a tool that succeeds is the "back to normal" signal for the rain
-      s.working = true; s.waiting.delete(who); s.error = false
+      s.working = true; s.waiting.delete(who); s.error = false; s.activity = THINKING
       break
     case 'PostToolUseFailure':
-      s.working = true; s.waiting.delete(who)
+      s.working = true; s.waiting.delete(who); s.activity = THINKING
       if (!ev.interrupted) { s.error = true; s.errorAt = now }
       break
     case 'Stop':
-      s.working = false; s.waiting.clear(); s.error = false
+      s.working = false; s.waiting.clear(); s.error = false; s.activity = null
       break
     case 'StopFailure':
-      s.working = false; s.waiting.clear(); s.error = true; s.errorAt = now
+      s.working = false; s.waiting.clear(); s.error = true; s.errorAt = now; s.activity = null
       break
     case 'SubagentStart':
       if (ev.agent) s.agents.add(ev.agent)
@@ -76,8 +124,81 @@ export function apply(s: SessionState, ev: CozyEvent, now: number): void {
       if (ev.agent) { s.agents.delete(ev.agent); s.waiting.delete(ev.agent) }
       break
     case 'SessionEnd':
-      s.ended = true; s.working = false; s.waiting.clear(); s.agents.clear()
+      s.ended = true; s.working = false; s.waiting.clear(); s.agents.clear(); s.activity = null
       break
+  }
+}
+
+function base(path: unknown): string {
+  return typeof path === 'string' ? path.split(/[\\/]/).filter(Boolean).pop() ?? '' : ''
+}
+
+export function projectName(cwd: unknown): string {
+  return clip(base(cwd), 24)
+}
+
+// TaskCreate's result names the new task's id; its exact shape isn't documented, so look for it loosely.
+export function taskIdFrom(response: unknown): string | undefined {
+  if (response && typeof response === 'object') {
+    const r = response as Record<string, unknown>
+    const task = (r.task && typeof r.task === 'object' ? r.task : r) as Record<string, unknown>
+    for (const k of ['id', 'taskId', 'task_id'])
+      if (typeof task[k] === 'string' || typeof task[k] === 'number') return String(task[k])
+  }
+  const text = typeof response === 'string' ? response : JSON.stringify(response ?? '')
+  return /"(?:id|taskId|task_id)"\s*:\s*"?(\w+)"?/.exec(text)?.[1] ?? /#(\d+)/.exec(text)?.[1]
+}
+
+const TEST = /\b(test|tests|pytest|jest|vitest|mocha|cargo test|go test|dotnet test|npm (run )?test|pnpm test|yarn test)\b/
+const BUILD = /\b(build|tsc|compile|make|cmake|msbuild|webpack|vite build|gradle|mvn)\b/
+
+// One short line for the bubble: what a tool call is about to do. Undefined keeps the current line (for calls
+// that say nothing useful on their own); null clears it.
+export function describeTool(tool: string, input: Record<string, unknown>): string | null | undefined {
+  switch (tool) {
+    case 'Bash':
+    case 'PowerShell': {
+      const cmd = typeof input.command === 'string' ? input.command : ''
+      // git first: a commit message may well mention "test" or "build"
+      if (/\bgit\s+commit\b/.test(cmd)) return '正在提交代码…'
+      if (/\bgit\s+(push|pull|fetch|clone)\b/.test(cmd)) return '正在同步代码…'
+      if (TEST.test(cmd)) return '正在跑测试…'
+      if (/\b(npm|pnpm|yarn)\s+(i|install|add)\b|\bpip\s+install\b|\bdotnet\s+(restore|add)\b/.test(cmd)) return '正在装依赖…'
+      if (BUILD.test(cmd)) return '正在编译…'
+      return '正在跑命令…'
+    }
+    case 'Edit':
+    case 'Write':
+    case 'MultiEdit':
+    case 'NotebookEdit': {
+      const name = base(input.file_path ?? input.notebook_path)
+      return name ? `在改 ${clip(name, 28)}` : '在改代码…'
+    }
+    case 'Read': {
+      const name = base(input.file_path)
+      return name ? `在读 ${clip(name, 28)}` : '在读代码…'
+    }
+    case 'Grep':
+    case 'Glob':
+      return '在找代码…'
+    case 'WebFetch':
+    case 'WebSearch':
+      return '在查资料…'
+    case 'Agent':
+    case 'Task':
+      return '派出了帮手…'
+    case 'TaskCreate':
+    case 'TaskUpdate':
+    case 'TodoWrite':
+      return '在排计划…'
+    case 'ToolSearch':
+    case 'TaskList':
+    case 'TaskGet':
+      return undefined
+    default:
+      if (tool.startsWith('mcp__cozy-room__')) return '在布置房间…'
+      if (tool.startsWith('mcp__')) return `在用 ${clip(tool.split('__')[1] ?? tool, 20)}`
+      return `在用 ${clip(tool, 20)}`
   }
 }
 
@@ -86,7 +207,7 @@ export function serialize(s: SessionState, token: string, now: number): string {
   return JSON.stringify({
     v: 1, tok: token, sid: s.sid, startedAt: s.startedAt, updatedAt: now, eventAt: s.eventAt,
     working: s.working, waiting: s.waiting.size, error: s.error, errorAt: s.errorAt,
-    agents: s.agents.size, ended: s.ended,
+    agents: s.agents.size, ended: s.ended, project: s.project, activity: s.activity, tasks: s.tasks,
   })
 }
 
@@ -99,6 +220,7 @@ const FEATURES: Record<string, string> = {
   Guard: '联机保护', Work: '工作状态同步', Waiting: '等待确认提醒', Timer: '计时器联动',
   Restore: '会话结束复原', Rain: '报错雨声', Status: '房间状态反显', Subagents: 'subagent 宠物',
   Notes: 'Claude 加 memo/todo', Pomodoro: 'Claude 开番茄钟', Music: 'Claude 换歌', Ambience: 'Claude 换环境音',
+  Tasks: '任务清单同步', Activity: '头顶动态', Attention: '缩小时提醒',
 }
 
 export type RoomStatus = {
