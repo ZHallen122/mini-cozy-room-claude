@@ -1,0 +1,131 @@
+# MODLOG — Mini Cozy Room × Claude Code
+
+Journal for the mod. Anything not written here is lost at the next context compaction.
+
+## Facts
+
+- Game: Mini Cozy Room: Lo-Fi, Steam app 3511030, `Version.txt` = 1.07.01.
+- Install: `C:\Program Files (x86)\Steam\steamapps\common\Mini Cozy Room`.
+- Engine: Unity 6000.3.22f1, IL2CPP (`GameAssembly.dll`). No anti-cheat. Co-op over Steam P2P (`TSMultiPlay.*`).
+- Saves: `%USERPROFILE%\AppData\LocalLow\TesseractStudio\MiniCozyRoom\` (Easy Save 3 `.es3`, Steam Cloud synced).
+  `Player.log` is there too. The game saves on change with a ~30 s cooldown.
+- Loader: MelonLoader 0.7.3 (GitHub release, sha256 of `MelonLoader.x64.zip` =
+  5B2B2F3D1CD42B59EC886C5BDC2663EDAE87A0097A4F4A8F58C0965A99DDA416), installed as **`winmm.dll`**.
+- Decompiled interop: `%USERPROFILE%\minicozyroom-decomp\` (outside the repo, never commit);
+  `sig-index.txt` there is a grep-able list of every public member.
+- Claude Code 2.1.299 function-hooks plugin API (`register.ts`, `$`), not settings.json command hooks.
+
+## Backups / restore
+
+- `um backup` zip: `%USERPROFILE%\.universal-modder\backups\minicozyroom-saves\20261021-150141.zip` (15 files).
+- Plain copy: `C:\Code_Project\Open_source\mini-cozy-room-mod-save-backup\2026-10-21\`.
+- Restore: close the game, copy the backup over the save folder (or `um backup restore`).
+- Game folder before MelonLoader: 559 files (list was kept in the session scratchpad).
+  To uninstall the loader: delete `winmm.dll`, `MelonLoader\`, `Mods\`, `Plugins\`, `UserData\`, `UserLibs\`.
+- The player's own state before testing: activity 10011 (beanbag reading), activityCount 94, exp 315, level 43,
+  ambience muted (fireplace 20001 flagged), pet 10002. All verified back to these values at the end.
+
+## Game internals used
+
+| What | API |
+| --- | --- |
+| character activity | `Player.Instance.ChangeActivityKey(k)` then `World.characterScript.UpdateActivity()`, `World.petScript.UpdateActivity()`, `World.UpdateActivityEffect()`; read `GetCurrentActivityKey()` |
+| activity table | `Player.ActivitySystem.GetActivityInfoDic()`: 10002/10003 Desk, 10011/10012 Beanbag, 10021/10024 Bed, 10031/10032 Sofa, 10099 Stand, plus 100x1 variants for Bridge/Seat/Tube |
+| furniture present | `World.CurrentRoom.IsDecoInteractable(decorableType)` |
+| stats | `Player.UserData.playerUserData.activityCount` (+1 per ChangeActivityKey), `.exp` |
+| co-op | `Singleton<MultiplayManager>.Instance`: `IsMultiplayMode`, `IsInLobby()`, `IsTransitioning` |
+| pet | `World.petScript` (`Pet`): `TouchPetReAction()`; sprites via `Singleton<PetSpriteLoader>`: `LoadPetGroupAsync(key, CancellationToken.None)`, `GetActions(key)["Idle"]`, `ReleasePetGroup(key)`; table `GameInfo.Instance.Pets` |
+| timer | `FindObjectOfType<Il2Cpp.TimerManager>()`: `StopwatchSystem.Toggle()/IsPlaying`, `SessionTimerSystem.Start()/Pause()`. Stopwatch is not saved |
+| ambience | `Singleton<Il2Cpp.AmbiencePlayer>`: `PlayAmbientSound(c)`, `StopAmbientSound(c)`, `Mute/UnmuteAmbientSound()`, `IsMute`; caches `Player.SoundSystem.GetAllAmbienceCaches()`; rain 20005 (non-DLC); DLC check `DLCManager.IsDLCSoundAccessible` |
+| UI | overlay canvases are ScreenSpaceOverlay, 1728x1080 reference, scale ~1.48; font `ToastManager.multiplayText.font` (NotoSansKR SDF with CJK fallback); toast `ToastManager.ShowToast(text)` |
+| memo (v2) | `Singleton<Il2Cpp.MemoManager>`: `_cacheDic` (key → `MemoCache`), `AddNewMemo(1, false)` creates + opens a memo synchronously (new key = the one not in `_cacheDic` before; bumps `createMemoCount`), `GetCache(k).GetMemoUserData().SetTitle(t)`, `MemoCache.EditContent(c)`, `_activatedMemos[k].SetData(cache)` redraws, `TryDeleteMemo(k)` deletes at once (no dialog). Saved in `UserContent_Alpha.es3`; `UserContentStore.RequestSave()` |
+| todo (v2) | `Singleton<Il2Cpp.TodoListManager>`: `_cacheDic`, `AddNewTodoList(1, false)`, `TodolistCache.AddTodoItem(-1).EditContent(t)`, `RemoveTodoItem(item)`, `GetOrderedTodoItems()`, `_activatedTodoList[k].SetData(cache)`, `TryDeleteTodolist(k)` |
+| pomodoro (v2) | `TimerManager.SessionTimerSystem`: `Start()`, `Pause()`, `CurrentStatus` (Ready/Session/Break), `CurrentTimeSeconds`. Not saved: a restart is back to Ready |
+| music (v2) | `Singleton<MusicPlayer>` (`Il2Cppcozyhouse.musicplayer`): `Musics`, `PlayBgm(music, false)` (also switches the current album to the song's), `PlayNextTrack()/PlayPreviousTrack()` (start playback when paused), `PauseBgm()/ResumeBgm()`, `IsMute`, `CurrentMusic`. Ownership: `Music.Cache` null (local file) or `!IsDLC` or `DLCManager.IsDLCSoundAccessible(cache)`. 200 owned songs here; the ambience DLC (AmbiencePack, keys 205xx) is not owned |
+| window | the game window covers the whole screen (2560x1600) transparently; the room UI is docked on the right |
+
+## Gotchas
+
+1. **`version.dll` proxy is ignored.** Windows has the compat layer `~ DISABLEDXMAXIMIZEDWINDOWEDMODE` on
+   `MiniCozyRoom.exe` (HKCU AppCompatFlags\Layers). The shim engine loads System32 `VERSION.dll` before
+   UnityPlayer's imports resolve, so the game-folder proxy never loads. Fix: rename the proxy to `winmm.dll`.
+2. MelonLoader issue #1159: some Unity 6000.3 builds crash under MelonLoader. This one loads and runs
+   (warning: `Class::Init signatures have been exhausted, using a substitute!`, harmless so far).
+3. `ScreenCapture.CaptureScreenshot` throws `MissingMethodException` (ReadOnlySpan) through the interop; use
+   `um win shot` from outside.
+4. `ChangeActivityKey` alone changes nothing on screen, and bumps `activityCount`. See table above.
+5. **Audible ambience earns exp** (315 → 575 in ~5 min during a test; reverted). Muted ambience earns none.
+   `PlayAmbientSound` implicitly unmutes. `UnmuteAmbientSound` brings back whatever played at mute time, so stop
+   sounds *after* unmuting, and mute *after* re-playing the originals.
+6. **`ChangePetVisualOnlyAsync` is a preview**: its sprite group is released after `PetSpriteLoader`'s grace TTL, so
+   clones go blank after a few seconds, and it may drop a reference on the real pet's group. The mod uses bare
+   SpriteRenderers holding their own loader reference instead.
+7. Pet keys 10000/20000/30000 are "no pet" entries (icon `Pet_Empty`), blank sprites. They are in the unlocked list.
+8. Interop optional `CancellationToken ct = null` parameters NRE: pass `Il2CppSystem.Threading.CancellationToken.None`.
+9. The save on disk can lag the room by ~30 s. A restore must keep its journal until the save file is newer
+   than the restore, or a restart reloads Claude's activity and the next episode records it as "original".
+10. PowerShell `Get-Content`/`Set-Content` without `-Encoding utf8` mangles UTF-8 source with Chinese text.
+11. Claude Code refuses a foreground `sleep N` and backgrounds it, ending the turn: a good-looking "bug" in tests.
+12. **`UnmuteAmbientSound` is asynchronous**: it re-plays the at-mute sounds a few frames later, so stopping them right
+    after unmuting doesn't stick. v2's ambience `set` keeps enforcing its set for 3 s (`RoomActions.Tick`).
+    (Gotcha 5's "unmute first, then stop" order is necessary but not sufficient.)
+13. A new todo list comes with one empty row. Filling that row in via `EditContent` doesn't redraw the open window
+    (still shows the placeholder); remove it with `RemoveTodoItem` and append the items instead.
+14. `AddNewMemo` bumps `createMemoCount`; v2 writes the old value back (like `activityCount` in gotcha 4).
+15. Playing music earns exp too (385 → 595 over a few minutes of tests, plus `bgmPlayedCount`/`bgmPlayedTime_Sec`).
+16. The installed plugin is a copy in `~/.claude/plugins/cache/cozy-room-local/cozy-room/<version>/`; bump
+    `plugin.json` version, `claude plugin marketplace update cozy-room-local`, `claude plugin update ...`.
+17. Plugin tool hooks have a 10 s budget and `$.clock.sleep` counts against it; `$.fs` has no delete, so an
+    abandoned command is overwritten with `{"cancelled":true}` and the game also drops anything older than 8 s.
+
+## Route
+
+MelonLoader + Il2CppInterop, C# `net6.0` mod (`game-mod/`). Claude Code side: function-hooks plugin `cozy-room`
+(`claude-mod/`) hooking `classic.*` events, writing `%LOCALAPPDATA%\CozyClaude\sessions\<sid>.json` with a 20 s
+heartbeat; status line via `$.ui.status` from `room.json`.
+
+## Verification (2026-10-21)
+
+- Headless `claude -p` runs with the plugin (`--plugin-dir`, then installed): SessionStart → rest (bed), prompt →
+  desk, Stop → bed, SessionEnd → back to beanbag 10011; subagent count 1→0, tool failure → error, refused Write →
+  waiting=1, all through real hooks. Screenshots taken with `um win shot` and inspected.
+- Synthetic session files: `×2` bubble, 3 subagent pets visible after the loader's grace TTL, rain switch and
+  recovery (with RainUnmutes temporarily on), co-op guard (simulated via dev `coop on`), crash/restart restore.
+- `claude plugin test claude-mod`: 11 pass. `tsc` strict against the 2.1.299 declarations: clean.
+  `claude plugin validate`: passes (only the public directory's LICENSE rule).
+- Game with the plugin's files absent / game closed: Claude Code sessions finish normally.
+- Dev console: create `<game>\UserData\CozyClaude\dev\` and write commands to `dev\cmd.txt` (`dump`, `state`,
+  `find`, `srinfo`, `amb`, `coop on|off`, `act`, ...). Removed at the end, so it is off.
+
+## v2 active operations (2026-10-21)
+
+- Plugin 0.2.0 registers 5 tools at `session.start` (`$.tool.register`, deferred behind ToolSearch):
+  `mcp__cozy-room__room_note|room_clear_claude_notes|room_timer|room_music|room_ambience`. Each `tool.call` hook
+  checks `room.json` (offline / co-op / loading → immediate `{deny}`), writes `commands\<uuid>.json` with the token
+  and `at`, polls `results\<uuid>.json` every 150 ms for up to 5 s. Failures come back as `{deny: reason}`.
+- Game mod 0.3.0: `CommandBridge` (thread pool timer, 200 ms) validates token/age/id and queues; `Mod.RunCommands`
+  executes on the main thread via `RoomActions` (re-checks the co-op guard, `Health.Command` per feature: Notes,
+  Pomodoro, Music, Ambience — self-checked at room ready, shown in room.json health and the status line).
+- Claude's notes: `[Claude] ` title prefix + `claude-notes.json` ledger; clear deletes only ledger entries whose
+  current title still equals the recorded one.
+- Verified in the real game (screenshots `um win shot`): memo, todo (2 items, no blank row), clear (user's memo 0
+  "Blank" and todo 0 untouched, deletion persisted across restart), pomodoro start/pause (status line
+  `🍅 专注 19:23`), play by name, next, pause, ambience set (incl. from muted), stop, list (DLC filtered),
+  wrong token ignored, co-op refusal (dev `coop on`), simulated incompatibility (dev `break Music`: toast,
+  `⚠ Claude 换歌不兼容`, tool refusal text). Two real `claude -p` runs: all five ops by plain-language request, then
+  clear + pause + stop. Game closed → immediate "not running" error; faked fresh room.json with no game → 5 s
+  timeout error, command withdrawn, never run on the next start.
+- `claude plugin test claude-mod`: 16 pass. `tsc` strict against 2.1.299 declarations: clean. `claude plugin
+  validate`: passes (LICENSE/icon directory notes only).
+- Restored after testing: exp 595 → 385, bgmPlayedCount 252 → 248, bgmPlayedTime_Sec 34140 → 33960; music back to
+  Lo-Fi Chill Sound Track - 17 paused; ambience fireplace + muted; Claude notes cleared. A fresh game load diffed
+  identical to the pre-test `stats` dump (every int stat, notes, music, ambience, timer). Dev console removed.
+- Backups for this round: `um backup` `minicozyroom-saves\20261021-170051.zip`; plain copy
+  `C:\Code_Project\Open_source\mini-cozy-room-mod-save-backup\2026-10-21-v2\`.
+- Dev console additions: `stats`, `stat <field> <value>`, `streset`, `todoitems <key>`, `break <Feature>`.
+
+## Log
+- 2026-10-21: backups; MelonLoader as `winmm.dll`; probe; full mod; plugin; verification above; plugin installed
+  at user scope from the local folder marketplace `cozy-room-local`. Nothing committed.
+- 2026-10-21 (later): v2 active operations — plugin 0.2.0 tools + game mod 0.3.0 command channel; verified and
+  restored as above. Nothing committed.

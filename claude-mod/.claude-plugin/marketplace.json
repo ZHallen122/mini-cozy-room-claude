@@ -1,0 +1,5 @@
+{
+  "name": "cozy-room-local",
+  "owner": { "name": "ZHallen122" },
+  "plugins": [{ "name": "cozy-room", "source": "./" }]
+}
