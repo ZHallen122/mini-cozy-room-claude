@@ -33,6 +33,7 @@
    - 解压到游戏目录，然后把游戏目录里的 `version.dll` 改名为 `winmm.dll`（这一步必须做：Windows 的兼容性设置会让游戏跳过 version.dll，用 winmm.dll 才能稳定加载）。如果游戏目录里原本就有 winmm.dll，先停下问我。
 
 5. 生成 MelonLoader 的程序集：通过 Steam 启动游戏，例如 PowerShell 里 `Start-Process "steam://rungameid/3511030"`（不要直接运行 exe），等到 `<游戏目录>\MelonLoader\Il2CppAssemblies\Assembly-CSharp.dll` 出现，而且 `<游戏目录>\MelonLoader\Latest.log` 里出现 `Support Module Loaded`（第一次要 1～2 分钟）。然后关闭游戏（征得我同意后用 CloseMainWindow），等进程退出。如果游戏闪退或黑屏退出，把 Latest.log 最后 30 行给我看，并删除 `winmm.dll` 恢复原状。
+   然后编辑这次生成的 `<游戏目录>\UserData\Loader.cfg`，只改这三项：`hide_console = true`（不弹 MelonLoader 控制台窗口）、`disable_start_screen = true`（不显示 MelonLoader 启动画面）、`force_offline_generation = true`（启动时不联网查询 MelonLoader 服务器，这个游戏查了也没有数据）。
 
 6. 获取源码：把仓库克隆到用户目录下的 `mini-cozy-room-claude` 文件夹（下面叫「克隆目录」；已经存在就在里面 `git pull`）。克隆失败说明没有权限或没登录 GitHub，告诉我。
 
@@ -59,6 +60,7 @@
 1. **备份存档**：复制 `%USERPROFILE%\AppData\LocalLow\TesseractStudio\MiniCozyRoom\` 到别处。
 2. **装 MelonLoader v0.7.3**：下载 [MelonLoader.x64.zip](https://github.com/LavaGang/MelonLoader/releases/download/v0.7.3/MelonLoader.x64.zip)，解压到游戏目录，**把 `version.dll` 改名为 `winmm.dll`**。
 3. **启动一次游戏**：从 Steam 启动，等 1～2 分钟，直到 `MelonLoader\Il2CppAssemblies\` 生成，然后关掉游戏。
+   再打开游戏目录里的 `UserData\Loader.cfg`，把 `hide_console`、`disable_start_screen`、`force_offline_generation` 三项改成 `true`：不弹控制台窗口、不显示启动画面、启动时不联网查询。
 4. **编译游戏 mod**：克隆本仓库，在仓库目录里运行（游戏目录不是默认位置时加 `-p:GameDir="..."`）：
 
 ```bash
@@ -113,3 +115,5 @@ claude plugin update cozy-room@cozy-room-local
 | 状态栏没有 `🏠`、Claude 没有房间工具 | 插件装完后要新开 Claude Code 会话；用 `claude plugin list` 确认 cozy-room 是 enabled |
 | Claude 说「你在联机房间里」 | 你在联机房间里或有朋友来访，mod 按设计不动房间 |
 | 报错时没有雨声 | 环境音静音时默认不放雨声，见 README「关于经验值」 |
+| 每次启动弹出一个黑色的 MelonLoader 窗口 | `UserData\Loader.cfg` 里设 `hide_console = true`。排错时想看实时日志可以改回 `false`，日志也一直写在 `MelonLoader\Latest.log` |
+| 启动比原来慢 | MelonLoader 每次启动要先起 .NET 运行时、加载程序集。实测连续启动时多约 3 秒（不装 3.1～3.4 秒，装了 6.1～6.8 秒，到游戏初始化完成）；隔很久第一次开（文件不在系统缓存里）会慢到 20 秒左右，再开就快了 |
