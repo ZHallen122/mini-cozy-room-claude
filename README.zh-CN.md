@@ -2,6 +2,8 @@
 
 [English](README.md) | **中文**
 
+**[安装](INSTALL.zh-CN.md)** · [功能](#功能) · [使用](#使用) · [配置](#配置) · [更新](INSTALL.zh-CN.md#更新) · [卸载](INSTALL.zh-CN.md#卸载) · [排错](INSTALL.zh-CN.md#排错)
+
 把 [Mini Cozy Room: Lo-Fi](https://store.steampowered.com/app/3511030/) 和 [Claude Code](https://claude.com/claude-code) 连起来的 mod：Claude 干活时，房间跟着它的状态变化；你开口时，Claude 也能动手布置房间。
 
 ![终端里 Claude Code 正在修 bug，房间里的小人坐在桌前，头上是「Claude 在等你确认」的气泡，旁边是 Claude 的任务清单，做完的已经勾上](docs/media/hero.png)

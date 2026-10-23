@@ -2,6 +2,8 @@
 
 **English** | [中文](README.zh-CN.md)
 
+**[Install](INSTALL.md)** · [Features](#features) · [Usage](#usage) · [Configuration](#configuration) · [Update](INSTALL.md#update) · [Uninstall](INSTALL.md#uninstall) · [Troubleshooting](INSTALL.md#troubleshooting)
+
 A mod that links [Mini Cozy Room: Lo-Fi](https://store.steampowered.com/app/3511030/) to [Claude Code](https://claude.com/claude-code). While Claude works, the room reflects what it's doing, and Claude can operate the room when you ask.
 
 ![Claude Code fixing a bug in the terminal while the character works at the desk, a "Claude is waiting for you" bubble above it and Claude's task list ticked off in the room](docs/media/hero.png)
