@@ -95,6 +95,14 @@ Journal for the mod. Anything not written here is lost at the next context compa
 21. Claude Code's task list comes two ways: TaskCreate/TaskUpdate (+ `classic.TaskCreated` / `TaskCompleted`
     events, verified firing in `claude -p` 2.1.299) and legacy TodoWrite (whole list each call). The plugin handles
     both; `PostToolUse` of TaskCreate is a backup for the id.
+23. A Bash call that exits non-zero comes back as an error and fires `PostToolUseFailure`, not `PostToolUse`
+    (checked 2026-10-23 in a `claude -p` transcript: `npm run test:bad` → `is_error: true`). So "PostToolUse of a
+    test command" already means exit 0; the output check is for pipes (`npm test | tail`) that hide the exit code.
+24. Bash's `tool_response` carries `gitOperation` (`commit: {sha, kind}`, `pr: {number, action: merged |
+    auto-merge-enabled | ...}`), classified by Claude Code itself; the plugin trusts it before parsing stdout.
+25. Context fill: `session.measure` (after each turn; `e.context.percent`, `changed` names `context`) and
+    `$.session.usage()` (free without `breakdown`). `percent` is absent until the first response and after a
+    compaction. Unity UI confetti with plain gravity leaves the screen in ~2 s: cap the fall speed.
 
 ## Route
 
@@ -203,6 +211,33 @@ heartbeat; status line via `$.ui.status` from `room.json`.
   and the todo window). Game switched to English for the shoot. Take 6 was recorded with plugin 0.4.1, so the
   working frames show the tail cut to "· C…"; 0.4.2 fixes that.
 
+## Celebrations and the sleepy character (2026-10-23)
+
+- Plugin 0.5.0: `celebrationFor` (state.ts) on `PostToolUse`: `gitOperation.pr.action == merged` or `gh pr merge` +
+  "Merged pull request" (not auto-merge) → `merge`; `gitOperation.commit` or git's `[branch sha]` line → `commit`;
+  a test command (describeTool `test`) whose output has a runner pass line and no failure count/marker → `tests`;
+  GitHub MCP `merge_pull_request` → `merge`. Backgrounded/interrupted calls never count. Session files gain
+  `celebrate`, `celebrateAt`, `context` (whole percent or null; reset on SessionStart incl. compact).
+- Game mod 0.5.0: `Effects` (own overlay canvas, order 1490 under the bubble): confetti bursts (commit 40 warm,
+  tests 32 green, merge 3×~40) with capped fall + flutter; "z"s beside the head while sleepy. `RoomDriver.UpdateFun`
+  plays a celebration once if under 15 s old (tests at most every 90 s), bubble cheer for 3.5 s, pet
+  `TouchPetReAction` wrapped in `StatSnapshot`. Sleepy from the most recently active session's `context` ≥
+  `SleepyAtContextPercent` (80); resting bubble "上下文快满了，好困… N%"; same session dropping below → "睡醒了，
+  精神满满！" for 4 s. Features `Celebrate`, `Sleepy` under Health. Bubble order: waiting > cheer > awake > activity
+  > sleepy (resting).
+- Verified in the real game: dev `party merge` (bubble + confetti), fake session files (`fake.py` in the session
+  scratchpad; dev `only fake-` hides other sessions): resting at 88/91% → bed, sleepy bubble, z's; working at 91% →
+  activity bubble + z's; context 88 → 40 → awake line; `celebrate=commit` through the bridge → confetti + 提交成功！;
+  English (`gmlang 0`): "Context nearly full, so sleepy… 91%", "PR merged!". Real `claude -p` (haiku) in a throwaway
+  repo: `npm run test:bad` (prints "1 passed", exits 1) → no party; `npm test` → `celebrating tests` 0.45 s after the
+  result; commit → `celebrating commit`; session file `context: 4`. Not verified: a real session reaching 80%
+  (fake files only), a real `gh pr merge` (unit tests only).
+- Stats: activityCount and every other int stat unchanged by the mod; exp/bgm counters rose from the player's own
+  music while the game ran and were written back. Fresh load diffed against the pre-test dump: same except
+  `bgmPlayedCount` +1 from that launch itself, the playlist position, and the unsaved pomodoro display. Backup:
+  `mini-cozy-room-mod-save-backup\2026-10-23-fun\`. Dev console additions: `party <kind>`, `only <prefix>|off`.
+  Dev folder removed. Plugin tests 35 pass, `tsc` strict clean, `claude plugin validate` passes.
+
 ## Log
 - 2026-10-21: backups; MelonLoader as `winmm.dll`; probe; full mod; plugin; verification above; plugin installed
   at user scope from the local folder marketplace `cozy-room-local`. Nothing committed.
@@ -214,3 +249,5 @@ heartbeat; status line via `$.ui.status` from `room.json`.
   follow the game's language (game mod 0.4.1, plugin 0.4.0).
 - 2026-10-22 (later): width-aware hint line (plugin 0.4.2); promo hero/GIF/MP4 in `docs/media/`, shown in both
   READMEs.
+- 2026-10-23: celebrations + sleepy character (plugin 0.5.0, game mod 0.5.0). Not released: INSTALL still points at
+  the v0.4.2 DLL.

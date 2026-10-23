@@ -59,8 +59,9 @@ claude plugin validate claude-mod
 - Close the game only with `CloseMainWindow` on `MiniCozyRoom.exe`, never by killing processes by name. Start it
   through Steam (`steam://rungameid/3511030`), not the exe.
 - Dev console: create `<game>\UserData\CozyClaude\dev\`, write commands to `dev\cmd.txt`, read `dev\out.txt`
-  (`state`, `stats`, `find`, `amb`, `coop on|off`, `break <Feature>`, `langs`, `gmlang <index>`, ...). Delete the
-  folder when done so it's off.
+  (`state`, `stats`, `find`, `amb`, `coop on|off`, `break <Feature>`, `langs`, `gmlang <index>`, `party <kind>`,
+  `only fake-|off`, ...). Delete the folder when done so it's off. Your own live session keeps the room in Working;
+  `only fake-` makes the mod read just hand-written `fake-*` session files (to test resting states).
 - Real Claude Code runs: `claude -p` with `CLAUDE*`, `CLAUDECODE`, `NO_COLOR`, `FORCE_COLOR`, `ANTHROPIC_*` removed
   from the environment (inherited ones give no colour and a child-session warning). To test task sync, pass
   `--allowedTools TaskCreate TaskUpdate` after the prompt (the flag is variadic and swallows a prompt placed after).
@@ -99,6 +100,8 @@ Claude Code side:
 - Task list events: TaskCreate/TaskUpdate (+ `classic.TaskCreated`/`TaskCompleted`) and legacy `TodoWrite`; both are
   handled (21). The task tools are off by default on newer models; `permissions.allow` does NOT turn them on.
 - Claude Code backgrounds a foreground `sleep N` and ends the turn: not a bug in the mod (11).
+- A Bash call exiting non-zero fires `PostToolUseFailure`, not `PostToolUse`; Bash results carry `gitOperation`
+  (commit / PR merged) for celebrations. Context fill comes from `session.measure` / `$.session.usage()` (23-25).
 
 Windows tooling:
 - PowerShell `Get-Content`/`Set-Content` without `-Encoding utf8` mangles Chinese text; edit with the Edit tool (10).

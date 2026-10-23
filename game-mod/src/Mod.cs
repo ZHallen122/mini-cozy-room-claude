@@ -3,7 +3,7 @@ using System.IO;
 using MelonLoader;
 using MelonLoader.Utils;
 
-[assembly: MelonInfo(typeof(CozyClaude.Mod), "CozyClaude", "0.4.1", "ZHallen122")]
+[assembly: MelonInfo(typeof(CozyClaude.Mod), "CozyClaude", "0.5.0", "ZHallen122")]
 [assembly: MelonGame("TesseractStudio", "MiniCozyRoom")]
 
 namespace CozyClaude
@@ -102,6 +102,7 @@ namespace CozyClaude
         {
             var s = _bridge.Latest;
             return $"sessions={s.AliveSessions} working={s.Working} waiting={s.Waiting} error={s.Error} subagents={s.Subagents} problem={s.Problem}\n" +
+                   $"celebrate={s.Celebration}@{s.CelebrationAt} context={s.Context} ({s.ContextSid})\n" +
                    $"activity={s.Activity} tasks={string.Join(" | ", System.Linq.Enumerable.Select(s.Sessions, x => $"{x.Project}:{x.Tasks.Count}"))}\n" +
                    $"phase={_room.Applied} blocked={_room.Blocked} today={_status.TodaySeconds:0}s\n" +
                    string.Join("\n", System.Linq.Enumerable.Select(_health.Report(), kv => $"  {kv.Key}: {kv.Value}"));
@@ -218,6 +219,10 @@ namespace CozyClaude
                     break;
                 }
                 case "petkey": PetSquad.ForceKey = int.Parse(arg); break;
+                // play a celebration now: party commit|merge|tests
+                case "party": _room.DevParty(arg); break;
+                // only fake-  : ignore every session whose id doesn't start with "fake-"; only off : back to all
+                case "only": SessionBridge.OnlySidPrefix = arg == "off" ? null : arg; break;
                 case "exp": Il2Cppcozyhouse.Player.Instance.UserData.playerUserData.exp = int.Parse(arg); break;
                 default: emit("unknown command " + cmd); break;
             }

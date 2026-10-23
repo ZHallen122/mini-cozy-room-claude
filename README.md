@@ -14,6 +14,8 @@ A mod that links [Mini Cozy Room: Lo-Fi](https://store.steampowered.com/app/3511
 - **Approval reminders.** When Claude needs your OK, the bubble says so and the pet reacts. If the game is minimized, the taskbar button flashes.
 - **Task list.** When Claude uses Claude Code's task tools, its tasks show up as a todo list in the room and get ticked off as it finishes them. Newer models don't have the tools by default; see [Troubleshooting](INSTALL.md#troubleshooting).
 - **Room signals.** Each subagent brings an extra pet, failing tools switch the ambience to rain, and the stopwatch runs while Claude works.
+- **Celebrations.** A commit, a merged pull request or a passing test run sets off confetti over the character, with a cheer in the bubble and a pet reaction.
+- **Sleepy when the context is full.** Once Claude's context window passes 80%, "z"s drift up from the character and, while it rests, the bubble says how full it is. After a compaction it wakes up again.
 - **Status in Claude Code.** The line under the prompt shows the song playing, the timer and today's working time.
 - **Room tools for Claude.** Ask Claude to add memos and todos, run the pomodoro, or change the music or ambience.
 - **Leaves no trace.** When the session ends, the room goes back to how it was.
@@ -88,6 +90,9 @@ The game mod reads `%LOCALAPPDATA%\CozyClaude\config.json`, which is created on 
 | `AttentionWhenHidden` | `true` | Flash the taskbar and update the tray tooltip when the game is hidden |
 | `AttentionSound` | `false` | Also play the game's timer sound |
 | `AttentionRestoreWindow` | `false` | Also restore the game window |
+| `Celebrate` | `true` | Confetti for commits, merged pull requests and passing tests |
+| `CelebrateTests` | `true` | Include passing test runs (at most one party every 90 s) |
+| `SleepyAtContextPercent` | `80` | Context fill (percent) from which the character gets sleepy; `0` turns it off |
 | `Language` | `"auto"` | `auto` follows the game; `zh` or `en` forces a language |
 
 </details>
@@ -99,6 +104,7 @@ The game mod reads `%LOCALAPPDATA%\CozyClaude\config.json`, which is created on 
 - Only Chinese and English are available. The room tools reply to Claude in Chinese, and Claude relays the reply in your language.
 - The pomodoro state isn't saved by the game, so it resets after a restart.
 - The co-op guard has only been tested by simulation.
+- Passing tests are recognised from the runner's summary line (jest, vitest, mocha, pytest, dotnet, cargo, go, node, bun and similar). A runner that prints no pass count gets no party.
 
 ## Roadmap
 

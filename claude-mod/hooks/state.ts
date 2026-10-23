@@ -2,6 +2,9 @@
 
 export type Task = { id: string; subject: string; done: boolean }
 
+// Something worth a little party in the room: a commit made, a pull request merged, a test run that passed.
+export type Celebration = 'commit' | 'merge' | 'tests'
+
 export type SessionState = {
   sid: string
   startedAt: number
@@ -20,6 +23,11 @@ export type SessionState = {
   activity: string | null
   // Claude's own task list (TaskCreate/TaskUpdate or TodoWrite), in creation order
   tasks: Task[]
+  // the latest celebration and when it happened; the game plays each one once, if it is recent
+  celebration: Celebration | null
+  celebrationAt: number
+  // how full the context window is, 0-100; null until the first response (and again after a compaction)
+  context: number | null
 }
 
 export type CozyEvent =
@@ -39,11 +47,14 @@ export type CozyEvent =
   | { kind: 'SubagentStart'; agent?: string }
   | { kind: 'SubagentStop'; agent?: string }
   | { kind: 'SessionEnd' }
+  | { kind: 'Celebrate'; what: Celebration }
+  | { kind: 'Context'; percent?: number }
 
 export function fresh(sid: string, now: number): SessionState {
   return {
     sid, startedAt: now, eventAt: now, working: false, waiting: new Set(), error: false, errorAt: 0,
-    agents: new Set(), ended: false, project: '', activity: null, tasks: [],
+    agents: new Set(), ended: false, project: '', activity: null, tasks: [], celebration: null, celebrationAt: 0,
+    context: null,
   }
 }
 
@@ -74,6 +85,8 @@ export function apply(s: SessionState, ev: CozyEvent, now: number): void {
   switch (ev.kind) {
     case 'SessionStart':
       s.ended = false; s.working = false; s.waiting.clear(); s.error = false; s.activity = null
+      // a compacted, cleared or new conversation starts with a near-empty context until the next measurement
+      s.context = null
       if (ev.source !== 'compact') { s.agents.clear(); s.tasks = [] }
       break
     case 'UserPromptSubmit':
@@ -126,6 +139,12 @@ export function apply(s: SessionState, ev: CozyEvent, now: number): void {
       break
     case 'SessionEnd':
       s.ended = true; s.working = false; s.waiting.clear(); s.agents.clear(); s.activity = null
+      break
+    case 'Celebrate':
+      s.celebration = ev.what; s.celebrationAt = now
+      break
+    case 'Context':
+      s.context = typeof ev.percent === 'number' && Number.isFinite(ev.percent) ? Math.max(0, Math.min(100, Math.round(ev.percent))) : null
       break
   }
 }
@@ -203,12 +222,56 @@ export function describeTool(tool: string, input: Record<string, unknown>): stri
   }
 }
 
+// A test run's output that says it passed / that something failed. Runners word this differently: jest/vitest
+// "Tests: 5 passed", mocha "5 passing", pytest "5 passed", dotnet "Passed!", cargo "test result: ok", go "ok  pkg",
+// unittest "OK", node "pass 5", bun (and `claude plugin test`) "5 pass". A run counts only with a pass line and no failure line, so a piped command
+// whose exit code hides a failure, or a plain `ls tests`, never celebrates.
+const PASSED = /\b\d+\s+(pass|passed|passing)\b|\bpass(ed)?\s*[:=]?\s+\d+|\ball tests? passed\b|\bPassed!|\btest result: ok\b|^ok\s+\S|^OK\b/im
+// counts ("1 failed", "Failed: 2") in any case; the runners' capitalised markers as written ("0 failed" is no failure)
+const FAILED_COUNT = /\b[1-9]\d*\s+(fail|failed|failing|failures?|errors?)\b|\bfail(ed|ures?)?\s*[:=]?\s+[1-9]/i
+const FAILED_MARK = /\bFAIL\b|\bFAILED\b|\bFailed!|\bTests? failed\b/
+
+function outputText(response: unknown): string {
+  if (typeof response === 'string') return response
+  if (!response || typeof response !== 'object') return ''
+  const r = response as Record<string, unknown>
+  const parts = ['stdout', 'stderr', 'output', 'result'].map(k => r[k]).filter((v): v is string => typeof v === 'string')
+  return parts.length > 0 ? parts.join('\n') : JSON.stringify(response)
+}
+
+// What a tool call that just succeeded is worth celebrating, if anything. Only called for PostToolUse: a failed
+// call (a non-zero exit code included) never gets here. Bash results classify git work in `gitOperation`; the text
+// is the fallback for shells or versions that don't.
+export function celebrationFor(tool: string, input: Record<string, unknown>, response: unknown): Celebration | undefined {
+  const r = (response && typeof response === 'object' ? response : {}) as Record<string, unknown>
+  if (tool === 'Bash' || tool === 'PowerShell') {
+    // a command sent to the background hasn't finished, so it hasn't passed or committed anything yet
+    if (r.backgroundTaskId || r.interrupted === true) return undefined
+    const cmd = typeof input.command === 'string' ? input.command : ''
+    const git = r.gitOperation && typeof r.gitOperation === 'object' ? r.gitOperation as Record<string, unknown> : undefined
+    const pr = git?.pr && typeof git.pr === 'object' ? git.pr as Record<string, unknown> : undefined
+    if (pr?.action === 'merged') return 'merge'
+    const out = outputText(response)
+    if (!git && /\bgh\s+pr\s+merge\b/.test(cmd) && /\bMerged pull request\b/i.test(out) && !/auto-merge/i.test(out)) return 'merge'
+    if (git?.commit && typeof git.commit === 'object') return 'commit'
+    // git's own summary line: "[main 8f4cd7d] message"
+    if (!git && /\bgit\s+commit\b/.test(cmd) && /^\[[^\]\s]+(?: \([^)]*\))? [0-9a-f]{7,}\]/m.test(out)) return 'commit'
+    if (describeTool(tool, input) === 'test' && PASSED.test(out) && !FAILED_COUNT.test(out) && !FAILED_MARK.test(out)) return 'tests'
+    return undefined
+  }
+  // a GitHub MCP server's merge tool (a refused merge comes back as a failure, or says so)
+  if (tool.startsWith('mcp__') && /merge_pull_request|merge_pr\b/.test(tool))
+    return /"merged"\s*:\s*false/.test(outputText(response)) ? undefined : 'merge'
+  return undefined
+}
+
 // The file the game mod reads. `updatedAt` doubles as a heartbeat: a session that stops writing is gone.
 export function serialize(s: SessionState, token: string, now: number): string {
   return JSON.stringify({
     v: 1, tok: token, sid: s.sid, startedAt: s.startedAt, updatedAt: now, eventAt: s.eventAt,
     working: s.working, waiting: s.waiting.size, error: s.error, errorAt: s.errorAt,
     agents: s.agents.size, ended: s.ended, project: s.project, activity: s.activity, tasks: s.tasks,
+    celebrate: s.celebration, celebrateAt: s.celebrationAt, context: s.context,
   })
 }
 
@@ -222,6 +285,7 @@ const FEATURES_EN: Record<string, string> = {
   Restore: 'restore on session end', Rain: 'rain on errors', Status: 'room status line', Subagents: 'subagent pets',
   Notes: "Claude's memos/todos", Pomodoro: "Claude's pomodoro", Music: "Claude's music", Ambience: "Claude's ambience",
   Tasks: 'task list sync', Activity: 'activity line', Attention: 'hidden-window reminder',
+  Celebrate: 'celebrations', Sleepy: 'sleepy when context is full',
 }
 
 const FEATURES: Record<string, string> = {
@@ -229,6 +293,7 @@ const FEATURES: Record<string, string> = {
   Restore: '会话结束复原', Rain: '报错雨声', Status: '房间状态反显', Subagents: 'subagent 宠物',
   Notes: 'Claude 加 memo/todo', Pomodoro: 'Claude 开番茄钟', Music: 'Claude 换歌', Ambience: 'Claude 换环境音',
   Tasks: '任务清单同步', Activity: '头顶动态', Attention: '缩小时提醒',
+  Celebrate: '庆祝特效', Sleepy: '上下文快满犯困',
 }
 
 export type RoomStatus = {

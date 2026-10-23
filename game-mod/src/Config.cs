@@ -36,6 +36,13 @@ namespace CozyClaude
         public bool AttentionWhenHidden { get; set; } = true;
         public bool AttentionSound { get; set; } = false;
         public bool AttentionRestoreWindow { get; set; } = false;
+        // A little party over the character when Claude makes a commit, merges a pull request or gets a test run to
+        // pass (tests at most every 90 s): confetti, a line in the bubble and the pet's reaction. No sound, nothing saved.
+        public bool Celebrate { get; set; } = true;
+        public bool CelebrateTests { get; set; } = true;
+        // From this full (percent of Claude's context window) the character gets sleepy: "z"s drift up, and while
+        // resting the bubble says so. It wakes up when the conversation is compacted. 0 turns it off.
+        public int SleepyAtContextPercent { get; set; } = 80;
         // "auto": follow the game's language (Chinese, otherwise English). "zh" or "en" force one.
         public string Language { get; set; } = "auto";
 

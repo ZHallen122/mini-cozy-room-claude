@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'claude-code/testing'
-import { apply, describeTool, displayWidth, fileName, fitLine, fresh, projectName, serialize, statusLine, statusLines, taskIdFrom } from './state'
+import { apply, celebrationFor, describeTool, displayWidth, fileName, fitLine, fresh, projectName, serialize, statusLine, statusLines, taskIdFrom } from './state'
 
 describe('session state', () => {
   test('a prompt starts work and Stop ends it', async () => {
@@ -65,6 +65,7 @@ describe('session state', () => {
     expect(json).toEqual({
       v: 1, tok: 'tok', sid: 's1', startedAt: 0, updatedAt: 99, eventAt: 1, working: true, waiting: 0,
       error: false, errorAt: 0, agents: 0, ended: false, project: '', activity: 'thinking', tasks: [],
+      celebrate: null, celebrateAt: 0, context: null,
     })
   })
 
@@ -225,5 +226,77 @@ describe('fitting the hint line', () => {
   test('counts emoji and CJK as two cells', async () => {
     expect(displayWidth('🏠 ⏰ 00:12')).toBe(11)
     expect(displayWidth('今日 Claude')).toBe(11)
+  })
+})
+
+describe('celebrations', () => {
+  const bash = (command: string, stdout: string, extra: Record<string, unknown> = {}) =>
+    celebrationFor('Bash', { command }, { stdout, stderr: '', interrupted: false, ...extra })
+
+  test('a commit, from the structured git result or from git\'s summary line', async () => {
+    expect(bash('git commit -m "x"', '', { gitOperation: { commit: { sha: 'abc1234', kind: 'committed' } } })).toBe('commit')
+    expect(bash('git add -A && git commit -m "add tests"', '[main 8f4cd7d] add tests\n 1 file changed')).toBe('commit')
+    expect(bash('git commit --amend --no-edit', '[feature/x (root-commit) 1a2b3c4] first')).toBe('commit')
+    // nothing to commit exits non-zero, so it never reaches here; a push alone is no commit
+    expect(bash('git push', '', { gitOperation: { push: { branch: 'main' } } })).toBe(undefined)
+    expect(bash('git log -1', '[main 8f4cd7d] add tests')).toBe(undefined)
+  })
+
+  test('a merged pull request, not an armed auto-merge', async () => {
+    expect(bash('gh pr merge 12 --squash', '', { gitOperation: { pr: { number: 12, action: 'merged' } } })).toBe('merge')
+    expect(bash('gh pr merge 12 --squash', '✓ Squashed and merged pull request #12 (Fix it)\n✓ Merged pull request #12')).toBe('merge')
+    expect(bash('gh pr merge 12 --auto', '', { gitOperation: { pr: { number: 12, action: 'auto-merge-enabled' } } })).toBe(undefined)
+    expect(bash('gh pr merge 12 --auto', '✓ Pull request #12 will be automatically merged via auto-merge')).toBe(undefined)
+    expect(celebrationFor('mcp__github__merge_pull_request', {}, '{"merged":true,"sha":"abc"}')).toBe('merge')
+    expect(celebrationFor('mcp__github__merge_pull_request', {}, '{"merged":false,"message":"not mergeable"}')).toBe(undefined)
+  })
+
+  test('a passing test run, in the words of different runners', async () => {
+    expect(bash('npx vitest run', ' Test Files  3 passed (3)\n      Tests  26 passed (26)')).toBe('tests')
+    expect(bash('pytest -q', '........ 8 passed in 0.12s')).toBe('tests')
+    expect(bash('dotnet test', 'Passed!  - Failed:     0, Passed:    26, Skipped:     0, Total:    26')).toBe('tests')
+    expect(bash('cargo test', 'test result: ok. 4 passed; 0 failed; 0 ignored')).toBe('tests')
+    expect(bash('go test ./...', 'ok  \texample.com/pkg\t0.01s')).toBe('tests')
+    expect(bash('node --test', 'ℹ tests 5\nℹ pass 5\nℹ fail 0')).toBe('tests')
+    expect(bash('npx mocha', '  26 passing (40ms)')).toBe('tests')
+    expect(bash('claude plugin test claude-mod', '(pass) a > b [0.2ms]\n\n 34 pass\n 0 fail\nRan 34 tests across 2 files.')).toBe('tests')
+  })
+
+  test('no party for failures, piped-away exit codes, or things that only look like tests', async () => {
+    expect(bash('npm test | tail -5', 'Tests  1 failed | 25 passed (26)')).toBe(undefined)
+    expect(bash('pytest | tail -1', '==== 1 failed, 7 passed in 0.3s ====')).toBe(undefined)
+    expect(bash('dotnet test', 'Failed!  - Failed:     1, Passed:    25')).toBe(undefined)
+    expect(bash('go test ./...', '--- FAIL: TestX (0.00s)\nFAIL\nok  \tother\t0.01s')).toBe(undefined)
+    expect(bash('node --test', 'ℹ pass 4\nℹ fail 1')).toBe(undefined)
+    expect(bash('claude plugin test claude-mod | tail -3', ' 34 pass\n 1 fail\nRan 35 tests across 2 files.')).toBe(undefined)
+    expect(bash('ls tests', 'a.test.ts\nb.test.ts')).toBe(undefined)
+    expect(bash('npm test', '5 passed', { backgroundTaskId: 'b1' })).toBe(undefined)
+    expect(bash('npm test', '5 passed', { interrupted: true })).toBe(undefined)
+    expect(celebrationFor('Read', { file_path: 'x' }, '5 passed')).toBe(undefined)
+  })
+
+  test('the session remembers the latest one with its time, and the file carries it', async () => {
+    const s = fresh('s1', 0)
+    apply(s, { kind: 'Celebrate', what: 'commit' }, 5)
+    apply(s, { kind: 'Celebrate', what: 'tests' }, 9)
+    const json = JSON.parse(serialize(s, 'tok', 10))
+    expect(json.celebrate).toBe('tests')
+    expect(json.celebrateAt).toBe(9)
+  })
+})
+
+describe('context fill', () => {
+  test('is kept as a whole percentage and forgotten when the conversation starts over', async () => {
+    const s = fresh('s1', 0)
+    expect(JSON.parse(serialize(s, 'tok', 1)).context).toBe(null)
+    apply(s, { kind: 'Context', percent: 83.6 }, 1)
+    expect(s.context).toBe(84)
+    apply(s, { kind: 'Context', percent: 130 }, 2)
+    expect(s.context).toBe(100)
+    apply(s, { kind: 'SessionStart', source: 'compact' }, 3)
+    expect(s.context).toBe(null)
+    apply(s, { kind: 'Context', percent: 12 }, 4)
+    apply(s, { kind: 'Context' }, 5)
+    expect(s.context).toBe(null)
   })
 })
