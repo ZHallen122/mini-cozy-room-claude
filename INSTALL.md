@@ -49,10 +49,10 @@ Rules:
    `claude plugin install cozy-room@cozy-room-local --scope user`
    Then confirm with `claude plugin list` that cozy-room is enabled.
 
-9. Turn on Claude's task tools so the task list can sync into the room (Claude Code doesn't give Claude `TaskCreate` / `TaskUpdate` by default). Tell me first and wait for my OK. Then in `%USERPROFILE%\.claude\settings.json`:
+9. Turn on Claude's task tools so the task list can sync into the room. On newer models Claude Code leaves `TaskCreate` / `TaskUpdate` out unless the environment variable `CLAUDE_CODE_ENABLE_TODO_TOOLS` is `1` (see https://code.claude.com/docs/en/tools-reference#task-tool-availability). Tell me first and wait for my OK. Then in `%USERPROFILE%\.claude\settings.json`:
    - If the file exists, copy it to `settings.json.bak` next to it first. If it doesn't exist, create it.
-   - Add `"TaskCreate"` and `"TaskUpdate"` to the `permissions.allow` array (create `permissions` and `allow` if missing). Keep every other key and every existing entry; don't add duplicates.
-   - Parse the file again to confirm it is valid JSON, and show me the `permissions` part.
+   - Set `"CLAUDE_CODE_ENABLE_TODO_TOOLS": "1"` inside the top-level `env` object (create `env` if missing). Keep every other key and value.
+   - Parse the file again to confirm it is valid JSON, and show me the `env` part.
 
 10. Verify:
    - Start the game through Steam again, wait 20 seconds, and confirm `MelonLoader\Latest.log` contains `CozyClaude loaded` and `room ready, linking with Claude Code` and no `[ERROR]`.
@@ -86,12 +86,12 @@ claude plugin marketplace add "C:/path/to/mini-cozy-room-claude/claude-mod"
 claude plugin install cozy-room@cozy-room-local --scope user
 ```
 
-6. **Turn on the task tools** (for task list sync): add `TaskCreate` and `TaskUpdate` to `permissions.allow` in `%USERPROFILE%\.claude\settings.json`, keeping what is already there:
+6. **Turn on the task tools** (for task list sync): on newer models Claude Code only gives Claude its task tools when `CLAUDE_CODE_ENABLE_TODO_TOOLS` is `1` ([Task tool availability](https://code.claude.com/docs/en/tools-reference#task-tool-availability)). Add it to the `env` block of `%USERPROFILE%\.claude\settings.json`, keeping what is already there:
 
 ```json
 {
-  "permissions": {
-    "allow": ["TaskCreate", "TaskUpdate"]
+  "env": {
+    "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1"
   }
 }
 ```
@@ -132,7 +132,7 @@ claude plugin marketplace remove cozy-room-local
 ```
 
 3. Delete `Mods\CozyClaude.dll` in the game folder. To remove MelonLoader as well, also delete `winmm.dll`, `MelonLoader\`, `Mods\`, `Plugins\`, `UserData\` and `UserLibs\`.
-4. Delete `%LOCALAPPDATA%\CozyClaude\`. Optionally remove `TaskCreate` and `TaskUpdate` from `permissions.allow` in `~/.claude/settings.json`.
+4. Delete `%LOCALAPPDATA%\CozyClaude\`. Optionally remove `CLAUDE_CODE_ENABLE_TODO_TOOLS` from the `env` block of `~/.claude/settings.json` (it takes effect the next time you start Claude Code).
 
 ## Troubleshooting
 
@@ -146,6 +146,6 @@ claude plugin marketplace remove cozy-room-local
 | No `🏠` under the prompt, Claude has no room tools | Start a new Claude Code session after installing; check with `claude plugin list` that cozy-room is enabled |
 | Claude says you are in a co-op room | You are in a co-op room or have visitors; by design the mod leaves the room alone |
 | No rain when a tool fails | With muted ambience the rain stays silent, so the game's audible-time experience isn't affected. Set `RainUnmutes` to `true` in `config.json` to unmute for the rain |
-| No task list from Claude | It only appears when Claude splits its work into tasks (TaskCreate / TodoWrite), in the game's todo panel, and is removed when the session ends. Check that `TaskCreate` and `TaskUpdate` are in `permissions.allow` in `~/.claude/settings.json` (Claude doesn't get them by default), and that `SyncTaskList` is `true` in `config.json` |
+| No task list from Claude | It only appears when Claude splits its work into tasks (TaskCreate / TodoWrite), in the game's todo panel, and is removed when the session ends. On newer models Claude only has the task tools when `CLAUDE_CODE_ENABLE_TODO_TOOLS` is `"1"` in the `env` block of `~/.claude/settings.json`; check that, and that `SyncTaskList` is `true` in `config.json` |
 | A black MelonLoader window opens at every start | Set `hide_console = true` in `UserData\Loader.cfg`. Set it back to `false` to watch the log live while troubleshooting; the log is always written to `MelonLoader\Latest.log` |
 | The game starts slower than before | MelonLoader starts the .NET runtime and loads its assemblies at every start. Measured on back-to-back starts it adds about 3 seconds (3.1–3.4 s without it, 6.1–6.8 s with it, to the game's own "init done"); the first start after a long break (files not in the system cache) can take around 20 seconds, later starts are fast again |

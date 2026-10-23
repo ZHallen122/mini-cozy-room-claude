@@ -184,8 +184,12 @@ heartbeat; status line via `$.ui.status` from `room.json`.
   display width (CJK and emoji 2 cells, combining marks / variation selectors / ZWJ 0), subtracts the hint text,
   the engine's separator and a margin, and while Claude works another `WORKING_PILLS` (42) cells for the working
   indicators that aren't part of `props.hint`. The song shows only while music plays. Plugin 0.4.2.
-- Claude Code doesn't give the model `TaskCreate` / `TaskUpdate` by default: they appear only when named in
-  `--allowedTools` or `permissions.allow`. Without them there's no task list to mirror (README says so).
+- On newer models Claude Code leaves the task tools out by default. What turns them on (official docs, Task tool
+  availability): `CLAUDE_CODE_ENABLE_TODO_TOOLS=1` (shell, or the `env` block of a settings file, applied live),
+  `--allowedTools`, `--tools`. `permissions.allow` does NOT: checked 2026-10-23 from each session's init tool list
+  (default: none; `permissions.allow` TaskCreate/TaskUpdate: none; `env` var via `--settings` and via
+  `~/.claude/settings.json`: TaskCreate/TaskGet/TaskList/TaskUpdate). A plugin can't do it on its own by documented
+  means: plugin `settings` only applies `agent` / `subagentStatusLine`, and `$.settings` is documented as read-only.
   Note `--allowedTools` is variadic: put the prompt before it or it's swallowed as a tool name.
 - Promo (`docs/media/hero.png`, `demo.gif`, `demo.mp4`): demo Windows Terminal (130 columns) in an empty
   `C:\cozy-demo` project, started with `CLAUDE*`, `CLAUDECODE`, `NO_COLOR`, `FORCE_COLOR`, `ANTHROPIC_*` stripped
