@@ -190,6 +190,8 @@ heartbeat; status line via `$.ui.status` from `room.json`.
   (default: none; `permissions.allow` TaskCreate/TaskUpdate: none; `env` var via `--settings` and via
   `~/.claude/settings.json`: TaskCreate/TaskGet/TaskList/TaskUpdate). A plugin can't do it on its own by documented
   means: plugin `settings` only applies `agent` / `subagentStatusLine`, and `$.settings` is documented as read-only.
+  Decision: the installer doesn't change Claude Code settings; task list sync works where the session has the tools,
+  and the troubleshooting table tells users how to turn them on themselves.
   Note `--allowedTools` is variadic: put the prompt before it or it's swallowed as a tool name.
 - Promo (`docs/media/hero.png`, `demo.gif`, `demo.mp4`): demo Windows Terminal (130 columns) in an empty
   `C:\cozy-demo` project, started with `CLAUDE*`, `CLAUDECODE`, `NO_COLOR`, `FORCE_COLOR`, `ANTHROPIC_*` stripped

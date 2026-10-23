@@ -12,7 +12,7 @@
 
 - **跟随 Claude 的状态**：Claude 干活时小人坐到桌前，停下时去休息；头上的气泡显示当前步骤，比如「思考中」「正在跑测试」「在改 README.md」。
 - **确认提醒**：Claude 等你批准时，气泡给出提醒、宠物做反应；游戏最小化时任务栏按钮会闪。
-- **任务清单**：Claude 的任务变成房间里的待办清单，做完一项勾一项。
+- **任务清单**：Claude 用 Claude Code 的任务工具时，任务会变成房间里的待办清单，做完一项勾一项。较新的模型默认没有这些工具，见[排错](INSTALL.zh-CN.md#排错)。
 - **房间信号**：每个 subagent 多带一只宠物，工具报错时切成雨声，Claude 干活时秒表计时。
 - **Claude Code 里的状态**：输入框下面那行显示正在放的歌、计时和今天干了多久。
 - **Claude 的房间工具**：让 Claude 加 memo 和待办、开番茄钟、换歌或换环境音。
@@ -26,7 +26,7 @@
 
 **环境要求**：Windows 10/11、Steam 版游戏、Claude Code 2.1.299 以上、Git。游戏 mod 在 [Releases](https://github.com/ZHallen122/mini-cozy-room-claude/releases/latest) 里有编译好的 DLL，只有从源码编译才需要 .NET SDK。
 
-把 [INSTALL.zh-CN.md](INSTALL.zh-CN.md) 里的 prompt 复制到一个新的 Claude Code 会话里。Agent 会备份存档、安装 MelonLoader 和 mod、安装插件、打开 Claude 的任务工具，每一步改动前都会先问你。手动安装、更新和卸载也在那一页。
+把 [INSTALL.zh-CN.md](INSTALL.zh-CN.md) 里的 prompt 复制到一个新的 Claude Code 会话里。Agent 会备份存档、安装 MelonLoader 和 mod、安装插件，每一步改动前都会先问你，不会动你的 Claude Code 设置。手动安装、更新和卸载也在那一页。
 
 ## 使用
 

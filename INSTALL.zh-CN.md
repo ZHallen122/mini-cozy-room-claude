@@ -41,7 +41,7 @@
 
 7. 安装游戏 mod（游戏必须是关闭的）：
    - 如果第 2 步读到的 `Version.txt` 是 `1.07.01`：下载 https://github.com/ZHallen122/mini-cozy-room-claude/releases/download/v0.4.2/CozyClaude.dll 到一个临时文件夹，核对 SHA256 必须等于 a4a164da45708b51ea301a38364f856e378669d2f7b334c38c597990435c1af9 ，不一致就停下。然后复制到 `<游戏目录>\Mods\CozyClaude.dll`。
-   - 版本不是 1.07.01，或者第 10 步发现 mod 加载失败：改为从源码编译。这需要 .NET SDK 6 或更新（`dotnet --list-sdks`；没装就告诉我去装）。在克隆目录里运行 `dotnet build game-mod -c Release -p:DeployToGame=true -p:GameDir="<游戏目录>"`，要求 0 个错误。
+   - 版本不是 1.07.01，或者第 9 步发现 mod 加载失败：改为从源码编译。这需要 .NET SDK 6 或更新（`dotnet --list-sdks`；没装就告诉我去装）。在克隆目录里运行 `dotnet build game-mod -c Release -p:DeployToGame=true -p:GameDir="<游戏目录>"`，要求 0 个错误。
    - 不管哪种方式，最后都要确认 `<游戏目录>\Mods\CozyClaude.dll` 存在。
 
 8. 安装 Claude Code 插件（路径用克隆目录的绝对路径）：
@@ -49,18 +49,13 @@
    `claude plugin install cozy-room@cozy-room-local --scope user`
    然后用 `claude plugin list` 确认 cozy-room 是 enabled。
 
-9. 打开 Claude 的任务工具，让任务清单能同步到房间。在较新的模型上，只有环境变量 `CLAUDE_CODE_ENABLE_TODO_TOOLS` 为 `1` 时，Claude Code 才会提供 `TaskCreate` / `TaskUpdate`（见 https://code.claude.com/docs/en/tools-reference#task-tool-availability ）。先告诉我，等我同意。然后编辑 `%USERPROFILE%\.claude\settings.json`：
-   - 文件已存在就先复制一份到同目录的 `settings.json.bak`；不存在就新建。
-   - 在顶层的 `env` 对象里设置 `"CLAUDE_CODE_ENABLE_TODO_TOOLS": "1"`（没有 `env` 就新建）。保留其他所有键和值。
-   - 重新解析一遍确认是合法 JSON，并把 `env` 部分给我看。
-
-10. 验证：
+9. 验证：
    - 再次通过 Steam 启动游戏，等 20 秒，确认 `MelonLoader\Latest.log` 里有 `CozyClaude loaded` 和 `room ready, linking with Claude Code`，并且没有 `[ERROR]`。
    - 确认 `%LOCALAPPDATA%\CozyClaude\room.json` 存在，且里面的 `updatedAt`（毫秒时间戳）是最近几秒。
    - 运行 `claude -p "Reply with the single word ok."`，然后确认 `%LOCALAPPDATA%\CozyClaude\sessions\` 里多了一个 .json 文件，并且 Latest.log 里出现了 `phase ... -> Working` 和 `-> Off` 这样的行。
    - 游戏保持开着，不用关。
 
-11. 最后用几句话告诉我：存档备份在哪、装了什么、改了哪些文件夹和文件（包括 settings.json）、每项验证的结果，以及「请重新开一个 Claude Code 会话，输入框下面的房间信息和房间工具才会出现」。
+10. 最后用几句话告诉我：存档备份在哪、装了什么、改了哪些文件夹、每项验证的结果，以及「请重新开一个 Claude Code 会话，输入框下面的房间信息和房间工具才会出现」。
 ````
 
 ## 手动安装
@@ -86,17 +81,7 @@ claude plugin marketplace add "C:/path/to/mini-cozy-room-claude/claude-mod"
 claude plugin install cozy-room@cozy-room-local --scope user
 ```
 
-6. **打开任务工具**（任务清单同步要用）：在较新的模型上，只有 `CLAUDE_CODE_ENABLE_TODO_TOOLS` 为 `1` 时 Claude Code 才会给 Claude 任务工具（[官方说明](https://code.claude.com/docs/en/tools-reference#task-tool-availability)）。把它加到 `%USERPROFILE%\.claude\settings.json` 的 `env` 里，原有内容保留：
-
-```json
-{
-  "env": {
-    "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1"
-  }
-}
-```
-
-7. 启动游戏，新开一个 Claude Code 会话，输入框下面那行末尾出现 `🏠 …` 就装好了（桌面版里显示为一条置顶提示）。
+6. 启动游戏，新开一个 Claude Code 会话，输入框下面那行末尾出现 `🏠 …` 就装好了（桌面版里显示为一条置顶提示）。
 
 ## 更新
 
@@ -132,7 +117,7 @@ claude plugin marketplace remove cozy-room-local
 ```
 
 3. 删掉游戏目录里的 `Mods\CozyClaude.dll`。要连 MelonLoader 一起去掉，再删 `winmm.dll`、`MelonLoader\`、`Mods\`、`Plugins\`、`UserData\`、`UserLibs\`。
-4. 删掉 `%LOCALAPPDATA%\CozyClaude\`。也可以把 `~/.claude/settings.json` 的 `env` 里的 `CLAUDE_CODE_ENABLE_TODO_TOOLS` 删掉（下次启动 Claude Code 时生效）。
+4. 删掉 `%LOCALAPPDATA%\CozyClaude\`。
 
 ## 排错
 
@@ -146,6 +131,6 @@ claude plugin marketplace remove cozy-room-local
 | 输入框下面没有 `🏠`、Claude 没有房间工具 | 插件装完后要新开 Claude Code 会话；用 `claude plugin list` 确认 cozy-room 是 enabled |
 | Claude 说「你在联机房间里」 | 你在联机房间里或有朋友来访，mod 按设计不动房间 |
 | 报错时没有雨声 | 环境音静音时雨声也不出声，这样游戏按「有声音的时长」给的经验不受影响。想听雨声就在 `config.json` 里把 `RainUnmutes` 设成 `true` |
-| 没看到 Claude 的任务清单 | 只有 Claude 把工作拆成任务（TaskCreate / TodoWrite）时才会出现，在游戏的「待办」里；会话结束就删掉。在较新的模型上，只有 `~/.claude/settings.json` 的 `env` 里 `CLAUDE_CODE_ENABLE_TODO_TOOLS` 为 `"1"` 时 Claude 才有任务工具，检查这一项，以及 `config.json` 里 `SyncTaskList` 是不是 `true` |
+| 没看到 Claude 的任务清单 | 这个清单同步的是 Claude Code 自己的任务工具，只有 Claude 有这些工具、并且把工作拆成任务时才会出现。较新的模型上 Claude Code 默认不提供任务工具；想要的话可以自己设置环境变量 `CLAUDE_CODE_ENABLE_TODO_TOOLS=1`（[官方说明](https://code.claude.com/docs/en/tools-reference#task-tool-availability)）。安装流程不替你改这项，因为它会影响所有 Claude Code 会话。也检查 `config.json` 里 `SyncTaskList` 是不是 `true` |
 | 每次启动弹出一个黑色的 MelonLoader 窗口 | `UserData\Loader.cfg` 里设 `hide_console = true`。排错时想看实时日志可以改回 `false`，日志也一直写在 `MelonLoader\Latest.log` |
 | 启动比原来慢 | MelonLoader 每次启动要先起 .NET 运行时、加载程序集。实测连续启动时多约 3 秒（不装 3.1～3.4 秒，装了 6.1～6.8 秒，到游戏初始化完成）；隔很久第一次开（文件不在系统缓存里）会慢到 20 秒左右，再开就快了 |

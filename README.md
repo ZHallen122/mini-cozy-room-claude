@@ -12,7 +12,7 @@ A mod that links [Mini Cozy Room: Lo-Fi](https://store.steampowered.com/app/3511
 
 - **Follows Claude's state.** The character works at the desk while Claude works and rests when it stops. A bubble shows the current step: "Thinking", "Running tests", "Editing README.md".
 - **Approval reminders.** When Claude needs your OK, the bubble says so and the pet reacts. If the game is minimized, the taskbar button flashes.
-- **Task list.** Claude's tasks show up as a todo list in the room and get ticked off as Claude finishes them.
+- **Task list.** When Claude uses Claude Code's task tools, its tasks show up as a todo list in the room and get ticked off as it finishes them. Newer models don't have the tools by default; see [Troubleshooting](INSTALL.md#troubleshooting).
 - **Room signals.** Each subagent brings an extra pet, failing tools switch the ambience to rain, and the stopwatch runs while Claude works.
 - **Status in Claude Code.** The line under the prompt shows the song playing, the timer and today's working time.
 - **Room tools for Claude.** Ask Claude to add memos and todos, run the pomodoro, or change the music or ambience.
@@ -26,7 +26,7 @@ A mod that links [Mini Cozy Room: Lo-Fi](https://store.steampowered.com/app/3511
 
 **Requirements:** Windows 10/11, the Steam version of the game, Claude Code 2.1.299+ and Git. The game mod ships as a prebuilt DLL in [Releases](https://github.com/ZHallen122/mini-cozy-room-claude/releases/latest); the .NET SDK is only needed to build from source.
 
-Paste the prompt from [INSTALL.md](INSTALL.md) into a new Claude Code session. The agent backs up your saves, installs MelonLoader and the mod, installs the plugin and turns on Claude's task tools. It asks before every change. The same page covers manual install, updating and uninstalling.
+Paste the prompt from [INSTALL.md](INSTALL.md) into a new Claude Code session. The agent backs up your saves, installs MelonLoader and the mod, and installs the plugin. It asks before every change and leaves your Claude Code settings alone. The same page covers manual install, updating and uninstalling.
 
 ## Usage
 
