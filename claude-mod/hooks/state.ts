@@ -252,7 +252,11 @@ export function celebrationFor(tool: string, input: Record<string, unknown>, res
     const pr = git?.pr && typeof git.pr === 'object' ? git.pr as Record<string, unknown> : undefined
     if (pr?.action === 'merged') return 'merge'
     const out = outputText(response)
-    if (!git && /\bgh\s+pr\s+merge\b/.test(cmd) && /\bMerged pull request\b/i.test(out) && !/auto-merge/i.test(out)) return 'merge'
+    // `gh pr merge` prints nothing when its output isn't a terminal (as under the Bash tool), so a successful run is
+    // the signal; --auto / --disable-auto only arm or disarm auto-merge, and output that reports a failure (a run
+    // whose exit code was masked, `|| true`) doesn't count
+    if (!git && /\bgh\s+pr\s+merge\b/.test(cmd) && !/\s--(auto|disable-auto|help)\b|\s-h\b/.test(cmd)
+      && !/auto-merge|not mergeable|\b(error|failed|could not)\b/i.test(out)) return 'merge'
     if (git?.commit && typeof git.commit === 'object') return 'commit'
     // git's own summary line: "[main 8f4cd7d] message"
     if (!git && /\bgit\s+commit\b/.test(cmd) && /^\[[^\]\s]+(?: \([^)]*\))? [0-9a-f]{7,}\]/m.test(out)) return 'commit'

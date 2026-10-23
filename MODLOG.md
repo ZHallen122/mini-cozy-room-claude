@@ -238,6 +238,24 @@ heartbeat; status line via `$.ui.status` from `room.json`.
   `mini-cozy-room-mod-save-backup\2026-10-23-fun\`. Dev console additions: `party <kind>`, `only <prefix>|off`.
   Dev folder removed. Plugin tests 35 pass, `tsc` strict clean, `claude plugin validate` passes.
 
+## Real merge, second promo (2026-10-23)
+
+- **`gh pr merge` prints nothing when stdout isn't a terminal** (as under the Bash tool), and Claude Code attached no
+  `gitOperation` to that result: a real merge in a demo session got `stdout: ""` and no party. Plugin 0.5.1 counts a
+  successful (`PostToolUse`, so exit 0) `gh pr merge` as a merge unless it has `--auto` / `--disable-auto` / `--help`
+  or the output reports a failure (`not mergeable`, `error`, `failed`, `could not`: a `|| true` that masked the exit
+  code). Verified live: PR #3 of a throwaway private repo merged by a demo session → `celebrating merge` 3.7 s
+  after the approval. Passing tests also verified live (`claude plugin test` in this session → `celebrating tests`).
+- Promo v2 (`docs/media/hero.png`, `demo.gif`, `demo.mp4`; X cut `x-promo.mp4`, not committed): no task list. Merge
+  take = demo Windows Terminal in `C:\cozy-demo` (prompt: view, `gh pr merge 3 --merge`, confirm with
+  `gh pr view 3 --json state`; `--allowedTools 'Bash(gh pr view *)'` so only the merge asks), recorded as before.
+  Sleepy clip staged: dev `only fake-` + a `fake-sleepy` session (working at 91% → resting at 91%), game window only.
+  Game in English for the shoot; stats diffed identical afterwards; language restored; dev console removed.
+- **Open:** after the demo session's Stop the room stayed in Working (bubble "Running a command…") while this
+  development session was idle with a background command running; take 2 (same setup) did go to rest. Watch the
+  session file around a turn end with a background task before trusting "idle = resting" in recordings; isolate
+  takes with dev `only <sid prefix>` if needed.
+
 ## Log
 - 2026-10-21: backups; MelonLoader as `winmm.dll`; probe; full mod; plugin; verification above; plugin installed
   at user scope from the local folder marketplace `cozy-room-local`. Nothing committed.
@@ -251,3 +269,5 @@ heartbeat; status line via `$.ui.status` from `room.json`.
   READMEs.
 - 2026-10-23: celebrations + sleepy character (plugin 0.5.0, game mod 0.5.0). Not released: INSTALL still points at
   the v0.4.2 DLL.
+- 2026-10-23 (later): plugin 0.5.1 counts a silent successful `gh pr merge`; promo v2 (merge celebration +
+  sleepy character, no task list).
