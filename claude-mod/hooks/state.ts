@@ -240,22 +240,25 @@ function duration(seconds: number): string {
 }
 
 // One status-line row from the room.json the game mod writes every 2 s.
-// Plain text only: symbols like ⏸ ⏱ ⚠ have no agreed width in terminals and push the rest of the line around.
-// The game mod's timer text still carries ⏸ and 🍅, so they are spelled out here.
+// Only symbols that are emoji by default (🏠 🎵 ⏰ 🍅): terminals agree they are two cells wide. Symbols such as
+// ⏸ ⏱ ⚠ ♪ have no agreed width and push the rest of the line around, so the game mod's ⏸ is spelled out.
 function plainTimer(timer: string): string {
-  return timer.replace(/\s*⏸/g, '（暂停）').replace(/🍅\s*/g, '番茄钟 ')
+  return timer.replace(/\s*⏸/g, ' (暂停)')
 }
 
-export function statusLine(room: RoomStatus | undefined, now: number): string {
+// compact: for the desktop app, where the line shares a row with the model picker and gets cut early — no song,
+// the timer without the pomodoro, and broken features only counted.
+export function statusLine(room: RoomStatus | undefined, now: number, compact = false): string {
   if (!room || typeof room.updatedAt !== 'number' || now - room.updatedAt > 10_000)
-    return '🏠 房间离线（游戏没开，或 CozyClaude mod 没加载）'
+    return compact ? '🏠 房间离线' : '🏠 房间离线 (游戏没开，或 CozyClaude mod 没加载)'
   const parts: string[] = []
   if (!room.ready) parts.push('房间加载中')
-  if (room.blocked) parts.push('联机中，暂停联动')
-  if (room.music) parts.push(`${room.music}${room.musicPlaying ? '' : '（暂停）'}`)
-  if (room.timer) parts.push(`计时 ${plainTimer(room.timer)}`)
+  if (room.blocked) parts.push(compact ? '联机中' : '联机中，暂停联动')
+  if (room.music && !compact) parts.push(`🎵 ${room.music}${room.musicPlaying ? '' : ' (暂停)'}`)
+  if (room.timer) parts.push(`⏰ ${plainTimer(compact ? room.timer.split(' · ')[0] ?? room.timer : room.timer)}`)
   if (typeof room.claudeTodaySeconds === 'number') parts.push(`今日 Claude ${duration(room.claudeTodaySeconds)}`)
-  for (const [key, value] of Object.entries(room.health ?? {}))
-    if (value.startsWith('incompatible')) parts.push(`注意：${FEATURES[key] ?? key}不兼容`)
+  const broken = Object.entries(room.health ?? {}).filter(([, value]) => value.startsWith('incompatible'))
+  if (compact && broken.length > 0) parts.push(`注意：${broken.length} 项不兼容`)
+  if (!compact) for (const [key] of broken) parts.push(`注意：${FEATURES[key] ?? key}不兼容`)
   return `🏠 ${parts.join(' · ')}`
 }

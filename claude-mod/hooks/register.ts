@@ -109,9 +109,11 @@ function startTimers($: EngineInterface): void {
 
 async function refreshStatus($: EngineInterface): Promise<void> {
   try {
-    const line = statusLine(await readRoom($), Date.now())
+    const room = await readRoom($)
+    const line = statusLine(room, Date.now())
     if ((await read($, roomLine)) !== line) await update($, roomLine, () => line)
-    $.ui.status(tailDrawn ? undefined : line)
+    // the pinned status is what the desktop app shows, in a narrow slot beside the model picker: the short form
+    $.ui.status(tailDrawn ? undefined : statusLine(room, Date.now(), true))
   } catch {
     // leave the previous line in place
   }
@@ -174,7 +176,8 @@ export const register: Register = on => {
     const line = await read($, roomLine)
     if (!line || e.surface !== 'terminal') return next(e)
     tailDrawn = true
-    return next({ ...e, props: { ...e.props, tail: ` · ${line}` } })
+    // the engine puts its own " · " before the tail
+    return next({ ...e, props: { ...e.props, tail: line } })
   }).catch(($, e, next) => next(e))
 
   for (const t of TOOLS) {

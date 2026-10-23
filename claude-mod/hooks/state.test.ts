@@ -85,16 +85,26 @@ describe('status line', () => {
       updatedAt: 1000, ready: true, blocked: false, music: 'Track - 22', musicPlaying: true, timer: '12:34',
       claudeTodaySeconds: 3900, health: { Work: 'ok', Rain: 'incompatible: MissingMethodException: x' },
     }, 2000)
-    expect(line).toBe('🏠 Track - 22 · 计时 12:34 · 今日 Claude 1h05m · 注意：报错雨声不兼容')
+    expect(line).toBe('🏠 🎵 Track - 22 · ⏰ 12:34 · 今日 Claude 1h05m · 注意：报错雨声不兼容')
   })
 
-  test('spells out pauses instead of symbols of uncertain width', async () => {
+  test('uses only two-cell emoji and spells out pauses', async () => {
     const line = statusLine({
       updatedAt: 1000, ready: true, music: 'Lo-Fi Chill Sound Track - 24', musicPlaying: false,
       timer: '30:16 ⏸ · 🍅 专注 19:23 ⏸', claudeTodaySeconds: 5040,
     }, 1000)
-    expect(line).toBe('🏠 Lo-Fi Chill Sound Track - 24（暂停） · 计时 30:16（暂停） · 番茄钟 专注 19:23（暂停） · 今日 Claude 1h24m')
-    expect(/[⏸⏱⚠♪🍅]/u.test(line)).toBe(false)
+    expect(line).toBe('🏠 🎵 Lo-Fi Chill Sound Track - 24 (暂停) · ⏰ 30:16 (暂停) · 🍅 专注 19:23 (暂停) · 今日 Claude 1h24m')
+    expect(/[⏸⏱⚠♪]/u.test(line)).toBe(false)
+  })
+
+  test('the short form for the desktop app drops the song and the pomodoro', async () => {
+    const room = {
+      updatedAt: 1000, ready: true, music: 'Lo-Fi Chill Sound Track - 24', musicPlaying: false,
+      timer: '35:59 ⏸ · 🍅 专注 19:23', claudeTodaySeconds: 5400,
+      health: { Rain: 'incompatible: x', Music: 'incompatible: y', Work: 'ok' },
+    }
+    expect(statusLine(room, 1000, true)).toBe('🏠 ⏰ 35:59 (暂停) · 今日 Claude 1h30m · 注意：2 项不兼容')
+    expect(statusLine(undefined, 0, true)).toBe('🏠 房间离线')
   })
 
   test('says when co-op pauses the link', async () => {
