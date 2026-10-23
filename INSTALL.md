@@ -7,7 +7,6 @@
 - Windows 10/11 and the Steam version of [Mini Cozy Room: Lo-Fi](https://store.steampowered.com/app/3511030/) (started at least once).
 - [Claude Code](https://claude.com/claude-code) 2.1.299 or newer.
 - [Git](https://git-scm.com/download/win) and the [.NET SDK](https://dotnet.microsoft.com/download) (6 or newer; 8 and 9 work).
-- Read access to this repository (it is private: the author has to invite you, and you need to be signed in to GitHub on your machine, for example with `gh auth login`).
 
 ## Let an AI agent install it (recommended)
 
