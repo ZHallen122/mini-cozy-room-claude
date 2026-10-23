@@ -73,8 +73,10 @@ Journal for the mod. Anything not written here is lost at the next context compa
     (still shows the placeholder); remove it with `RemoveTodoItem` and append the items instead.
 14. `AddNewMemo` bumps `createMemoCount`; v2 writes the old value back (like `activityCount` in gotcha 4).
 15. Playing music earns exp too (385 → 595 over a few minutes of tests, plus `bgmPlayedCount`/`bgmPlayedTime_Sec`).
-16. The installed plugin is a copy in `~/.claude/plugins/cache/cozy-room-local/cozy-room/<version>/`; bump
-    `plugin.json` version, `claude plugin marketplace update cozy-room-local`, `claude plugin update ...`.
+16. Installed from the local folder marketplace, the plugin is read in place: `claude plugin list` shows "Read from"
+    `claude-mod/` (the manifest docs: a plugin loaded in place from a local-path marketplace isn't pinned by
+    `version`), so a new session or `/reload-plugins` picks up edits. (An early note here said it was a cache copy
+    needing a version bump + `plugin update`.) Bump `version` anyway when shipping.
 17. Plugin tool hooks have a 10 s budget and `$.clock.sleep` counts against it; `$.fs` has no delete, so an
     abandoned command is overwritten with `{"cancelled":true}` and the game also drops anything older than 8 s.
 18. **`UI_TodoList.SetData(cache)` flushes every row's input field into the data before rebuilding**, so text
