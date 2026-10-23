@@ -1,5 +1,6 @@
 {
   "name": "cozy-room",
-  "version": "0.3.0",
-  "description": "Mirrors Claude Code's state into Mini Cozy Room: Lo-Fi (needs the CozyClaude game mod), shows the room in the status line, and gives Claude tools to add memos/todos, run the pomodoro, change music and ambience when asked."
+  "version": "0.3.1",
+  "description": "Mirrors Claude Code's state into Mini Cozy Room: Lo-Fi (needs the CozyClaude game mod), shows the room in the status line, and gives Claude tools to add memos/todos, run the pomodoro, change music and ambience when asked.",
+  "types": "./types/index.d.ts"
 }

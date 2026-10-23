@@ -85,11 +85,20 @@ describe('status line', () => {
       updatedAt: 1000, ready: true, blocked: false, music: 'Track - 22', musicPlaying: true, timer: '12:34',
       claudeTodaySeconds: 3900, health: { Work: 'ok', Rain: 'incompatible: MissingMethodException: x' },
     }, 2000)
-    expect(line).toBe('🏠 · ♪ Track - 22 · ⏱ 12:34 · 今日 Claude 1h05m · ⚠ 报错雨声不兼容')
+    expect(line).toBe('🏠 Track - 22 · 计时 12:34 · 今日 Claude 1h05m · 注意：报错雨声不兼容')
+  })
+
+  test('spells out pauses instead of symbols of uncertain width', async () => {
+    const line = statusLine({
+      updatedAt: 1000, ready: true, music: 'Lo-Fi Chill Sound Track - 24', musicPlaying: false,
+      timer: '30:16 ⏸ · 🍅 专注 19:23 ⏸', claudeTodaySeconds: 5040,
+    }, 1000)
+    expect(line).toBe('🏠 Lo-Fi Chill Sound Track - 24（暂停） · 计时 30:16（暂停） · 番茄钟 专注 19:23（暂停） · 今日 Claude 1h24m')
+    expect(/[⏸⏱⚠♪🍅]/u.test(line)).toBe(false)
   })
 
   test('says when co-op pauses the link', async () => {
-    expect(statusLine({ updatedAt: 1000, ready: true, blocked: true }, 1000)).toContain('联机中·暂停联动')
+    expect(statusLine({ updatedAt: 1000, ready: true, blocked: true }, 1000)).toContain('联机中，暂停联动')
   })
 })
 

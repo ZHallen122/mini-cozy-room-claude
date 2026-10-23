@@ -240,16 +240,22 @@ function duration(seconds: number): string {
 }
 
 // One status-line row from the room.json the game mod writes every 2 s.
+// Plain text only: symbols like ⏸ ⏱ ⚠ have no agreed width in terminals and push the rest of the line around.
+// The game mod's timer text still carries ⏸ and 🍅, so they are spelled out here.
+function plainTimer(timer: string): string {
+  return timer.replace(/\s*⏸/g, '（暂停）').replace(/🍅\s*/g, '番茄钟 ')
+}
+
 export function statusLine(room: RoomStatus | undefined, now: number): string {
   if (!room || typeof room.updatedAt !== 'number' || now - room.updatedAt > 10_000)
     return '🏠 房间离线（游戏没开，或 CozyClaude mod 没加载）'
-  const parts = ['🏠']
+  const parts: string[] = []
   if (!room.ready) parts.push('房间加载中')
-  if (room.blocked) parts.push('联机中·暂停联动')
-  if (room.music) parts.push(`${room.musicPlaying ? '♪' : '⏸'} ${room.music}`)
-  if (room.timer) parts.push(`⏱ ${room.timer}`)
+  if (room.blocked) parts.push('联机中，暂停联动')
+  if (room.music) parts.push(`${room.music}${room.musicPlaying ? '' : '（暂停）'}`)
+  if (room.timer) parts.push(`计时 ${plainTimer(room.timer)}`)
   if (typeof room.claudeTodaySeconds === 'number') parts.push(`今日 Claude ${duration(room.claudeTodaySeconds)}`)
   for (const [key, value] of Object.entries(room.health ?? {}))
-    if (value.startsWith('incompatible')) parts.push(`⚠ ${FEATURES[key] ?? key}不兼容`)
-  return parts.join(' · ')
+    if (value.startsWith('incompatible')) parts.push(`注意：${FEATURES[key] ?? key}不兼容`)
+  return `🏠 ${parts.join(' · ')}`
 }

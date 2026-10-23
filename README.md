@@ -11,7 +11,7 @@ Makes the room in [Mini Cozy Room: Lo-Fi](https://store.steampowered.com/app/351
 - When Claude breaks its work into tasks, a `[Claude] <project> tasks` todo list appears in the room and gets ticked off as Claude goes; it is removed when the session ends.
 - Every subagent Claude sends out brings one extra pet along.
 - When one of Claude's tools fails, the ambience switches to rain, and back once things work again.
-- The stopwatch runs while Claude works, and the Claude Code status line shows the song playing in the room, the timer and how long Claude worked today.
+- The stopwatch runs while Claude works, and the end of the hint line under the Claude Code prompt shows the song playing in the room, the timer and how long Claude worked today.
 - When the session ends, the room goes back to how it was before.
 - When you ask in the conversation, Claude can also add memos and todo lists, run the pomodoro, change the song or change the ambience.
 

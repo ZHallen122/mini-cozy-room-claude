@@ -1,3 +1,4 @@
+import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 import {
   apply, type CozyEvent, describeTool, fileName, fresh, projectName, type RoomStatus, type SessionState, serialize, statusLine,
@@ -20,6 +21,12 @@ const STATUS_MS = 3_000
 const REPLY_WAIT_MS = 5_000
 const REPLY_POLL_MS = 150
 const PLUGIN = 'cozy-room'
+
+// The room summary drawn at the end of the hint line under the prompt. Kept in $.state so the line redraws when
+// it changes (a render hook may only read).
+const roomLine = atom({ plugin: 'cozy-room', key: 'roomLine' } as const, null)
+// The terminal draws the hint line's tail; other surfaces don't, so there the summary stays a pinned status.
+let tailDrawn = false
 
 const sessions = new Map<string, SessionState>()
 let root: string | undefined
@@ -102,7 +109,9 @@ function startTimers($: EngineInterface): void {
 
 async function refreshStatus($: EngineInterface): Promise<void> {
   try {
-    $.ui.status(statusLine(await readRoom($), Date.now()))
+    const line = statusLine(await readRoom($), Date.now())
+    if ((await read($, roomLine)) !== line) await update($, roomLine, () => line)
+    $.ui.status(tailDrawn ? undefined : line)
   } catch {
     // leave the previous line in place
   }
@@ -159,6 +168,13 @@ export const register: Register = on => {
     startTimers($)
     await registerTools($)
     return next(e)
+  }).catch(($, e, next) => next(e))
+
+  on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
+    const line = await read($, roomLine)
+    if (!line || e.surface !== 'terminal') return next(e)
+    tailDrawn = true
+    return next({ ...e, props: { ...e.props, tail: ` · ${line}` } })
   }).catch(($, e, next) => next(e))
 
   for (const t of TOOLS) {
