@@ -60,7 +60,7 @@
    - 运行 `claude -p "Reply with the single word ok."`，然后确认 `%LOCALAPPDATA%\CozyClaude\sessions\` 里多了一个 .json 文件，并且 Latest.log 里出现了 `phase ... -> Working` 和 `-> Off` 这样的行。
    - 游戏保持开着，不用关。
 
-11. 最后用几句话告诉我：存档备份在哪、装了什么、改了哪些文件夹和文件（包括 settings.json）、每项验证的结果，以及「请重新开一个 Claude Code 会话，状态栏和房间工具才会出现」。
+11. 最后用几句话告诉我：存档备份在哪、装了什么、改了哪些文件夹和文件（包括 settings.json）、每项验证的结果，以及「请重新开一个 Claude Code 会话，输入框下面的房间信息和房间工具才会出现」。
 ````
 
 ## 手动安装
@@ -69,7 +69,7 @@
 2. **装 MelonLoader v0.7.3**：下载 [MelonLoader.x64.zip](https://github.com/LavaGang/MelonLoader/releases/download/v0.7.3/MelonLoader.x64.zip)，解压到游戏目录，**把 `version.dll` 改名为 `winmm.dll`**。
 3. **启动一次游戏**：从 Steam 启动，等 1～2 分钟，直到 `MelonLoader\Il2CppAssemblies\` 生成，然后关掉游戏。
    再打开游戏目录里的 `UserData\Loader.cfg`，把 `hide_console`、`disable_start_screen`、`force_offline_generation` 三项改成 `true`：不弹控制台窗口、不显示启动画面、启动时不联网查询。
-4. **安装游戏 mod**：从[最新 Release](https://github.com/ZHallen122/mini-cozy-room-claude/releases/latest)下载 `CozyClaude.dll`，放进游戏目录的 `Mods\` 文件夹。Release 说明里写了 SHA256 和测试过的游戏版本。
+4. **安装游戏 mod**：从[最新 Release](https://github.com/ZHallen122/mini-cozy-room-claude/releases/latest)下载 `CozyClaude.dll`，放进游戏目录的 `Mods\` 文件夹（游戏要先关掉）。Release 说明里写了 SHA256 和测试过的游戏版本。
    想自己从源码编译（需要 .NET SDK 6+）：克隆本仓库，在仓库目录里运行（游戏目录不是默认位置时加 `-p:GameDir="..."`）：
 
 ```bash
@@ -96,7 +96,7 @@ claude plugin install cozy-room@cozy-room-local --scope user
 }
 ```
 
-7. 启动游戏，新开一个 Claude Code 会话，状态栏出现 `🏠 …` 就装好了。
+7. 启动游戏，新开一个 Claude Code 会话，输入框下面那行末尾出现 `🏠 …` 就装好了（桌面版里显示为一条置顶提示）。
 
 ## 更新
 
@@ -141,9 +141,9 @@ claude plugin marketplace remove cozy-room-local
 | 游戏目录里没有生成 `MelonLoader\Latest.log` | MelonLoader 没被加载。检查是不是还叫 `version.dll`，改名为 `winmm.dll` |
 | 装了 MelonLoader 后游戏黑屏退出 | 游戏更新到了 MelonLoader 还不支持的 Unity 版本。删掉 `winmm.dll` 即可恢复原样，等 MelonLoader 更新 |
 | 编译报找不到 `Il2CppAssemblies` 里的 dll | 装完 MelonLoader 后还没启动过游戏，或 `GameDir` 路径不对 |
-| 状态栏显示「房间离线」 | 游戏没开，或 mod 没加载。看 `MelonLoader\Latest.log` 有没有 `CozyClaude loaded` |
-| 状态栏显示 `⚠ xx不兼容` | 游戏更新后这个功能对不上了，mod 已自动停用它，其他功能照常。日志里有原因 |
-| 状态栏没有 `🏠`、Claude 没有房间工具 | 插件装完后要新开 Claude Code 会话；用 `claude plugin list` 确认 cozy-room 是 enabled |
+| 输入框下面那行显示 `🏠 房间离线`（英文是 `Room offline`） | 游戏没开，或 mod 没加载。看 `MelonLoader\Latest.log` 有没有 `CozyClaude loaded` |
+| 输入框下面那行显示 `注意：xx不兼容`（英文是 `Note: … incompatible`） | 游戏更新后这个功能对不上了，mod 已自动停用它，其他功能照常。日志里有原因 |
+| 输入框下面没有 `🏠`、Claude 没有房间工具 | 插件装完后要新开 Claude Code 会话；用 `claude plugin list` 确认 cozy-room 是 enabled |
 | Claude 说「你在联机房间里」 | 你在联机房间里或有朋友来访，mod 按设计不动房间 |
 | 报错时没有雨声 | 环境音静音时雨声也不出声，这样游戏按「有声音的时长」给的经验不受影响。想听雨声就在 `config.json` 里把 `RainUnmutes` 设成 `true` |
 | 没看到 Claude 的任务清单 | 只有 Claude 把工作拆成任务（TaskCreate / TodoWrite）时才会出现，在游戏的「待办」里；会话结束就删掉。检查 `~/.claude/settings.json` 的 `permissions.allow` 里有没有 `TaskCreate` 和 `TaskUpdate`（Claude 默认没有这两个工具），以及 `config.json` 里 `SyncTaskList` 是不是 `true` |

@@ -60,7 +60,7 @@ Rules:
    - Run `claude -p "Reply with the single word ok."`, then confirm a new .json file appeared in `%LOCALAPPDATA%\CozyClaude\sessions\` and Latest.log has lines like `phase ... -> Working` and `-> Off`.
    - Leave the game running.
 
-11. Finally tell me in a few sentences: where the save backup is, what was installed, which folders and files changed (including settings.json), the result of each check, and "Please start a new Claude Code session so the status line and the room tools appear."
+11. Finally tell me in a few sentences: where the save backup is, what was installed, which folders and files changed (including settings.json), the result of each check, and "Please start a new Claude Code session so the room line under the prompt and the room tools appear."
 ````
 
 ## Manual install
@@ -69,7 +69,7 @@ Rules:
 2. **Install MelonLoader v0.7.3**: download [MelonLoader.x64.zip](https://github.com/LavaGang/MelonLoader/releases/download/v0.7.3/MelonLoader.x64.zip), extract it into the game folder, and **rename `version.dll` to `winmm.dll`**.
 3. **Start the game once**: start it from Steam and wait 1–2 minutes until `MelonLoader\Il2CppAssemblies\` exists, then close the game.
    Open `UserData\Loader.cfg` in the game folder and set `hide_console`, `disable_start_screen` and `force_offline_generation` to `true`: no console window, no start screen, no server call at startup.
-4. **Install the game mod**: download `CozyClaude.dll` from the [latest release](https://github.com/ZHallen122/mini-cozy-room-claude/releases/latest) and put it in the game's `Mods\` folder. The release notes list the SHA256 and the game version it was tested with.
+4. **Install the game mod**: download `CozyClaude.dll` from the [latest release](https://github.com/ZHallen122/mini-cozy-room-claude/releases/latest) and put it in the game's `Mods\` folder (with the game closed). The release notes list the SHA256 and the game version it was tested with.
    To build it from source instead (needs the .NET SDK 6+), run this in a clone of this repository (add `-p:GameDir="..."` if the game isn't in the default folder):
 
 ```bash
@@ -96,7 +96,7 @@ claude plugin install cozy-room@cozy-room-local --scope user
 }
 ```
 
-7. Start the game and a new Claude Code session; when the status line shows `🏠 …`, you are done.
+7. Start the game and a new Claude Code session; when the line under the prompt ends with `🏠 …`, you are done. (In the desktop app it appears as a pinned notice instead.)
 
 ## Update
 
@@ -141,9 +141,9 @@ claude plugin marketplace remove cozy-room-local
 | No `MelonLoader\Latest.log` appears in the game folder | MelonLoader wasn't loaded. Check whether the file is still called `version.dll` and rename it to `winmm.dll` |
 | The game exits on a black screen after installing MelonLoader | The game updated to a Unity version MelonLoader doesn't support yet. Delete `winmm.dll` to undo, and wait for a MelonLoader update |
 | The build can't find dlls in `Il2CppAssemblies` | The game hasn't been started since MelonLoader was installed, or `GameDir` is wrong |
-| The status line says the room is offline (房间离线) | The game isn't running or the mod didn't load. Check `MelonLoader\Latest.log` for `CozyClaude loaded` |
-| The status line shows `⚠ … 不兼容` (incompatible) | That feature no longer matches the game after an update; the mod switched it off and everything else keeps working. The log says why |
-| No `🏠` in the status line, Claude has no room tools | Start a new Claude Code session after installing; check with `claude plugin list` that cozy-room is enabled |
+| The line under the prompt says `🏠 Room offline` (or `房间离线`) | The game isn't running or the mod didn't load. Check `MelonLoader\Latest.log` for `CozyClaude loaded` |
+| The line under the prompt shows `Note: … incompatible` (or `注意：…不兼容`) | That feature no longer matches the game after an update; the mod switched it off and everything else keeps working. The log says why |
+| No `🏠` under the prompt, Claude has no room tools | Start a new Claude Code session after installing; check with `claude plugin list` that cozy-room is enabled |
 | Claude says you are in a co-op room | You are in a co-op room or have visitors; by design the mod leaves the room alone |
 | No rain when a tool fails | With muted ambience the rain stays silent, so the game's audible-time experience isn't affected. Set `RainUnmutes` to `true` in `config.json` to unmute for the rain |
 | No task list from Claude | It only appears when Claude splits its work into tasks (TaskCreate / TodoWrite), in the game's todo panel, and is removed when the session ends. Check that `TaskCreate` and `TaskUpdate` are in `permissions.allow` in `~/.claude/settings.json` (Claude doesn't get them by default), and that `SyncTaskList` is `true` in `config.json` |

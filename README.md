@@ -58,7 +58,7 @@ The two parts talk only through small files in `%LOCALAPPDATA%\CozyClaude\`. No 
 ## Design principles
 
 - **Claude Code is never affected.** Hooks pass every event on first and swallow their own errors, and room tools time out after 5 seconds.
-- **Failures are visible.** Each feature has its own health check. A feature a game update breaks is switched off on its own and flagged in the status line.
+- **Failures are visible.** Each feature has its own health check. A feature a game update breaks is switched off on its own and flagged on the line under the Claude Code prompt.
 - **Saves stay intact.** Everything the mod changes is restored when the session ends or on the next start. Your own memos, todos and stats are never touched.
 - **Co-op and paid content are off-limits.** The mod does nothing in co-op rooms and uses only content you own.
 - **Experience isn't inflated.** Automatic features never unmute audio, so the game's audible-time experience isn't affected.
@@ -94,7 +94,7 @@ The game mod reads `%LOCALAPPDATA%\CozyClaude\config.json`, which is created on 
 
 ## Known limitations
 
-- Tested with game version 1.07.01 (Unity 6000.3.22f1) and Claude Code 2.1.299. A game update can stop MelonLoader from loading ([MelonLoader#1159](https://github.com/LavaGang/MelonLoader/issues/1159)). The status line then shows the room as offline, and Claude Code keeps working.
+- Tested with game version 1.07.01 (Unity 6000.3.22f1) and Claude Code 2.1.299. A game update can stop MelonLoader from loading ([MelonLoader#1159](https://github.com/LavaGang/MelonLoader/issues/1159)). The line under the prompt then says "Room offline", and Claude Code keeps working.
 - MelonLoader adds about 3 seconds to game startup, and more after a long break.
 - Only Chinese and English are available. The room tools reply to Claude in Chinese, and Claude relays the reply in your language.
 - The pomodoro state isn't saved by the game, so it resets after a restart.
