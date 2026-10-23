@@ -6,7 +6,7 @@
 
 把 [Mini Cozy Room: Lo-Fi](https://store.steampowered.com/app/3511030/) 和 [Claude Code](https://claude.com/claude-code) 连起来的 mod：Claude 干活时，房间跟着它的状态变化；你开口时，Claude 也能动手布置房间。
 
-![终端里 Claude Code 正在修 bug，房间里的小人坐在桌前，头上是「Claude 在等你确认」的气泡，旁边是 Claude 的任务清单，做完的已经勾上](docs/media/hero.png)
+![终端里 Claude Code 刚合并了一个 PR，房间里小人坐在桌前，彩带落下，气泡写着「PR merged!」](docs/media/hero.png)
 
 ## 功能
 
@@ -20,9 +20,9 @@
 - **Claude 的房间工具**：让 Claude 加 memo 和待办、开番茄钟、换歌或换环境音。
 - **不留痕迹**：会话结束后，房间回到原来的样子。
 
-![演示：Claude Code 接到任务、列出任务清单、请求确认、修好 bug、完成，房间每一步都跟着变](docs/media/demo.gif)
+![演示：Claude Code 查看一个 PR，小人在桌前干活；Claude 请求合并，气泡显示「Claude 在等你确认」；合并后放彩带、显示「PR merged!」；最后上下文到 91%，小人头上飘「z」，去床上犯困](docs/media/demo.gif)
 
-<sub>演示为 1.5 倍速，游戏设为英文 · [高清 MP4](docs/media/demo.mp4)</sub>
+<sub>部分片段加速，游戏设为英文。合并是真实操作；犯困那段用一个上下文 91% 的测试会话演示。 · [高清 MP4](docs/media/demo.mp4)</sub>
 
 ## 安装
 

@@ -6,7 +6,7 @@
 
 A mod that links [Mini Cozy Room: Lo-Fi](https://store.steampowered.com/app/3511030/) to [Claude Code](https://claude.com/claude-code). While Claude works, the room reflects what it's doing, and Claude can operate the room when you ask.
 
-![Claude Code fixing a bug in the terminal while the character works at the desk, a "Claude is waiting for you" bubble above it and Claude's task list ticked off in the room](docs/media/hero.png)
+![Claude Code has just merged a pull request in the terminal; in the room, confetti falls around the character at the desk and the bubble says "PR merged!"](docs/media/hero.png)
 
 ## Features
 
@@ -20,9 +20,9 @@ A mod that links [Mini Cozy Room: Lo-Fi](https://store.steampowered.com/app/3511
 - **Room tools for Claude.** Ask Claude to add memos and todos, run the pomodoro, or change the music or ambience.
 - **Leaves no trace.** When the session ends, the room goes back to how it was.
 
-![Demo: Claude Code gets a task, makes a task list, asks for approval, fixes the bug and finishes; the room follows each step](docs/media/demo.gif)
+![Demo: Claude Code looks at a pull request and the character works at the desk; Claude asks to merge and the bubble says "Claude is waiting for you"; after the merge, confetti and "PR merged!"; then, with the context at 91%, z's drift up and the character goes to bed, sleepy](docs/media/demo.gif)
 
-<sub>Demo at 1.5× speed · [full-quality MP4](docs/media/demo.mp4)</sub>
+<sub>Parts sped up. The sleepy scene is staged with a test session at 91% context; the merge is a real one. · [Full-quality MP4](docs/media/demo.mp4)</sub>
 
 ## Install
 
