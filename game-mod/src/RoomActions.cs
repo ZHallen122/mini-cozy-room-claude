@@ -99,7 +99,7 @@ namespace CozyClaude
             ledger.Notes.Add(new Ledger.Entry { Kind = "memo", Key = key.Value, Title = fullTitle, At = Now() });
             ledger.Save();
             UserContentStore.RequestSave();
-            Toast($"Claude 加了一条 memo：{fullTitle}");
+            Toast(Lang.T($"Claude 加了一条 memo：{fullTitle}", $"Claude added a memo: {fullTitle}"));
             return CommandResult.Done($"已在房间里加了 memo「{fullTitle}」。", new { key = key.Value, title = fullTitle });
         }
 
@@ -130,7 +130,7 @@ namespace CozyClaude
             ledger.Notes.Add(new Ledger.Entry { Kind = "todo", Key = key.Value, Title = fullTitle, At = Now() });
             ledger.Save();
             UserContentStore.RequestSave();
-            Toast($"Claude 加了一个 todo 清单：{fullTitle}（{items.Count} 项）");
+            Toast(Lang.T($"Claude 加了一个 todo 清单：{fullTitle}（{items.Count} 项）", $"Claude added a todo list: {fullTitle} ({items.Count} items)"));
             return CommandResult.Done($"已在房间里加了 todo 清单「{fullTitle}」，{items.Count} 项。", new { key = key.Value, title = fullTitle, items = items.Count });
         }
 
@@ -163,7 +163,7 @@ namespace CozyClaude
             ledger.Notes.Clear();
             ledger.Save();
             if (removed > 0) UserContentStore.RequestSave();
-            if (removed > 0) Toast($"清掉了 Claude 加的 {removed} 条 memo/todo");
+            if (removed > 0) Toast(Lang.T($"清掉了 Claude 加的 {removed} 条 memo/todo", $"Removed {removed} memo/todo list(s) Claude added"));
             var note = kept > 0 ? $"另有 {kept} 条的标题已经不是 Claude 起的（被改过，或那个位置已是别的笔记），算作用户的，没有删。" : "";
             return CommandResult.Done(removed == 0 && kept == 0 ? "没有 Claude 加的 memo/todo 需要清除。" : $"清掉了 Claude 加的 {removed} 条 memo/todo。{note}",
                 new { removed, kept });
@@ -200,13 +200,13 @@ namespace CozyClaude
                     if (st.IsPlaying.Value) return CommandResult.Done("番茄钟已经在走了：" + Describe());
                     st.Start();
                     _room.TimerTakenOver();
-                    Toast("Claude 开了番茄钟");
+                    Toast(Lang.T("Claude 开了番茄钟", "Claude started the pomodoro"));
                     return CommandResult.Done("番茄钟开始了：" + Describe());
                 case "pause":
                     if (!st.IsPlaying.Value) return CommandResult.Done("番茄钟本来就没在走：" + Describe());
                     st.Pause();
                     _room.TimerTakenOver();
-                    Toast("Claude 暂停了番茄钟");
+                    Toast(Lang.T("Claude 暂停了番茄钟", "Claude paused the pomodoro"));
                     return CommandResult.Done("番茄钟暂停了：" + Describe());
                 case "status":
                     return CommandResult.Done("番茄钟：" + Describe());
@@ -244,18 +244,18 @@ namespace CozyClaude
                 {
                     var before = Now();
                     if (action == "next") player.PlayNextTrack(); else player.PlayPreviousTrack();
-                    Toast("Claude 换了一首歌");
+                    Toast(Lang.T("Claude 换了一首歌", "Claude changed the song"));
                     return CommandResult.Done($"已切到{(action == "next" ? "下" : "上")}一首（按游戏自己的播放顺序）：{before} → {Now()}。{muteNote}");
                 }
                 case "pause":
                     if (!player.IsPlaying) return CommandResult.Done("音乐本来就是暂停的。");
                     player.PauseBgm();
-                    Toast("Claude 暂停了音乐");
+                    Toast(Lang.T("Claude 暂停了音乐", "Claude paused the music"));
                     return CommandResult.Done("音乐已暂停：" + Now());
                 case "resume":
                     if (player.IsPlaying) return CommandResult.Done("音乐已经在放：" + Now());
                     player.ResumeBgm();
-                    Toast("Claude 继续播放音乐");
+                    Toast(Lang.T("Claude 继续播放音乐", "Claude resumed the music"));
                     return CommandResult.Done($"继续播放：{Now()}。{muteNote}");
                 case "play":
                 {
@@ -265,7 +265,7 @@ namespace CozyClaude
                     if (match == null) return CommandResult.Fail($"没有叫「{name}」的歌；用 action=list 看可放的歌名。");
                     if (!Owned(match.Cache)) return CommandResult.Fail($"「{match.MusicName}」属于你没买的 DLC，不放。");
                     player.PlayBgm(match, false);
-                    Toast($"Claude 换歌：{match.MusicName}");
+                    Toast(Lang.T($"Claude 换歌：{match.MusicName}", $"Claude is playing: {match.MusicName}"));
                     return CommandResult.Done($"开始播放「{match.MusicName}」（{match.AlbumName}）。{muteNote}", new { key = match.MusicKey });
                 }
                 default:
@@ -291,7 +291,7 @@ namespace CozyClaude
                     var targets = names.Count == 0 ? all.Where(c => c.IsPlaying).ToList() : Resolve(all, names, out _);
                     _room.AmbienceTakenOver();
                     foreach (var c in targets) if (c.IsPlaying) amb.StopAmbientSound(c);
-                    Toast("Claude 关掉了环境音");
+                    Toast(Lang.T("Claude 关掉了环境音", "Claude stopped the ambience"));
                     return CommandResult.Done($"已停止：{string.Join("、", targets.Select(c => c.SoundName))}。现在在放：{Playing()}。");
                 }
                 case "set":
@@ -315,7 +315,7 @@ namespace CozyClaude
                             if (c.IsPlaying && !wanted.Contains(c)) amb.StopAmbientSound(c);
                     foreach (var c in wanted)
                         if (!c.IsPlaying) amb.PlayAmbientSound(c);
-                    Toast($"Claude 换环境音：{string.Join("、", wanted.Select(c => c.SoundName))}");
+                    Toast(Lang.T($"Claude 换环境音：{string.Join("、", wanted.Select(c => c.SoundName))}", $"Claude changed the ambience: {string.Join(", ", wanted.Select(c => c.SoundName))}"));
                     var note = wasMuted ? "环境音原来是静音的，已取消静音（有声的环境音会让游戏按时长给经验）。" : "";
                     return CommandResult.Done($"现在在放：{Playing()}。{note}");
                 }

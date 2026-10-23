@@ -120,7 +120,9 @@ namespace CozyClaude
             var added = Keys(todos).Where(k => !before.Contains(k)).ToList();
             if (added.Count != 1) return null;
             cache = todos.GetCache(added[0]);
-            var title = RoomActions.Marker + (string.IsNullOrEmpty(session.Project) ? "Claude 的任务" : $"{session.Project} 任务");
+            var title = RoomActions.Marker + (string.IsNullOrEmpty(session.Project)
+                ? Lang.T("Claude 的任务", "Claude's tasks")
+                : Lang.T($"{session.Project} 任务", $"{session.Project} tasks"));
             cache.GetTodolistUserData().SetTitle(title);
             // a new list comes with one empty row
             foreach (var blank in Items(cache).Where(i => !i.IsFolder && string.IsNullOrEmpty(i.Content)).ToList())

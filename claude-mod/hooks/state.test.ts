@@ -64,7 +64,7 @@ describe('session state', () => {
     const json = JSON.parse(serialize(s, 'tok', 99))
     expect(json).toEqual({
       v: 1, tok: 'tok', sid: 's1', startedAt: 0, updatedAt: 99, eventAt: 1, working: true, waiting: 0,
-      error: false, errorAt: 0, agents: 0, ended: false, project: '', activity: '思考中…', tasks: [],
+      error: false, errorAt: 0, agents: 0, ended: false, project: '', activity: 'thinking', tasks: [],
     })
   })
 
@@ -107,6 +107,16 @@ describe('status line', () => {
     expect(statusLine(undefined, 0, true)).toBe('🏠 房间离线')
   })
 
+  test('follows the room into English', async () => {
+    const room = {
+      updatedAt: 1000, ready: true, lang: 'en', music: 'Lo-Fi Chill Sound Track - 24', musicPlaying: false,
+      timer: '35:59 (paused) · 🍅 Focus 19:23', claudeTodaySeconds: 5400, health: { Rain: 'incompatible: x' },
+    }
+    expect(statusLine(room, 1000)).toBe('🏠 🎵 Lo-Fi Chill Sound Track - 24 (paused) · ⏰ 35:59 (paused) · 🍅 Focus 19:23 · Claude today 1h30m · Note: rain on errors incompatible')
+    expect(statusLine(room, 1000, true)).toBe('🏠 ⏰ 35:59 (paused) · Claude today 1h30m · Note: 1 incompatible')
+    expect(statusLine({ ...room, updatedAt: 0 }, 60_000, true)).toBe('🏠 Room offline')
+  })
+
   test('says when co-op pauses the link', async () => {
     expect(statusLine({ updatedAt: 1000, ready: true, blocked: true }, 1000)).toContain('联机中，暂停联动')
   })
@@ -114,27 +124,27 @@ describe('status line', () => {
 
 describe('activity line', () => {
   test('names what a tool call is about to do', async () => {
-    expect(describeTool('Bash', { command: 'npm test -- --watch=false' })).toBe('正在跑测试…')
-    expect(describeTool('Bash', { command: 'git commit -m "fix the test"' })).toBe('正在提交代码…')
-    expect(describeTool('Bash', { command: 'dotnet build game-mod -c Release' })).toBe('正在编译…')
-    expect(describeTool('Bash', { command: 'ls -la' })).toBe('正在跑命令…')
-    expect(describeTool('Edit', { file_path: 'C:\\repo\\src\\RoomDriver.cs' })).toBe('在改 RoomDriver.cs')
-    expect(describeTool('Read', { file_path: '/home/u/README.md' })).toBe('在读 README.md')
-    expect(describeTool('Grep', {})).toBe('在找代码…')
-    expect(describeTool('mcp__cozy-room__room_music', {})).toBe('在布置房间…')
+    expect(describeTool('Bash', { command: 'npm test -- --watch=false' })).toBe('test')
+    expect(describeTool('Bash', { command: 'git commit -m "fix the test"' })).toBe('commit')
+    expect(describeTool('Bash', { command: 'dotnet build game-mod -c Release' })).toBe('build')
+    expect(describeTool('Bash', { command: 'ls -la' })).toBe('command')
+    expect(describeTool('Edit', { file_path: 'C:\\repo\\src\\RoomDriver.cs' })).toBe('edit:RoomDriver.cs')
+    expect(describeTool('Read', { file_path: '/home/u/README.md' })).toBe('read:README.md')
+    expect(describeTool('Grep', {})).toBe('search')
+    expect(describeTool('mcp__cozy-room__room_music', {})).toBe('room')
     expect(describeTool('ToolSearch', {})).toBe(undefined)
   })
 
   test('follows the turn: thinking, a tool, idle', async () => {
     const s = fresh('s1', 0)
     apply(s, { kind: 'UserPromptSubmit' }, 1)
-    expect(s.activity).toBe('思考中…')
-    apply(s, { kind: 'PreToolUse', activity: '正在跑测试…' }, 2)
-    expect(s.activity).toBe('正在跑测试…')
+    expect(s.activity).toBe('thinking')
+    apply(s, { kind: 'PreToolUse', activity: 'test' }, 2)
+    expect(s.activity).toBe('test')
     apply(s, { kind: 'PreToolUse', activity: undefined }, 3)
-    expect(s.activity).toBe('正在跑测试…')
+    expect(s.activity).toBe('test')
     apply(s, { kind: 'PostToolUse' }, 4)
-    expect(s.activity).toBe('思考中…')
+    expect(s.activity).toBe('thinking')
     apply(s, { kind: 'Stop' }, 5)
     expect(s.activity).toBe(null)
   })

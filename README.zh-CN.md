@@ -19,6 +19,8 @@
 
 > 这是个人自用 mod，非官方，与游戏开发商无关。只支持 Windows + Steam 版游戏。
 
+> mod 显示的文字跟着游戏的语言走：游戏是中文（简体或繁体）就显示中文，其他语言显示英文。在游戏设置里切换语言，房间和 Claude Code 的提示行会一起跟着变。
+
 ## 由两部分组成
 
 | 部分 | 目录 | 是什么 |
@@ -80,13 +82,14 @@ Claude 用的工具：
 | `RainSoundKey` | `20005` | 用哪个环境音当雨声 |
 | `RainUnmutes` | `false` | 环境音静音时，是否为雨声临时取消静音 |
 | `PetNudgeWhileWaiting` | `true` | 等待确认时宠物做反应动作 |
-| `WaitingText` | `"Claude 在等你确认"` | 等待确认时的气泡文字 |
+| `WaitingText` | `""` | 等待确认时的气泡文字，留空就按当前语言显示默认文字 |
 | `MaxSubagentPets` | `3` | subagent 宠物最多几只 |
 | `ShowActivity` | `true` | 气泡显示 Claude 正在做什么 |
 | `SyncTaskList` | `true` | 把 Claude 的任务同步成房间里的待办清单 |
 | `AttentionWhenHidden` | `true` | 游戏最小化或在托盘时，等确认会闪任务栏、改托盘提示 |
 | `AttentionSound` | `false` | 同时用你在游戏里选的计时器提示音响一声 |
 | `AttentionRestoreWindow` | `false` | 同时把游戏窗口弹出来 |
+| `Language` | `"auto"` | `auto` 跟着游戏语言；`zh` 或 `en` 固定用中文或英文 |
 
 ## 卸载
 
@@ -107,7 +110,7 @@ claude plugin marketplace remove cozy-room-local
 ## 已知限制
 
 - 只在游戏 1.07.01（Unity 6000.3.22f1）和 Claude Code 2.1.299 上测过。游戏更新后 MelonLoader 可能起不来（[MelonLoader#1159](https://github.com/LavaGang/MelonLoader/issues/1159)），这时状态栏显示「房间离线」，Claude Code 不受影响。
-- 游戏里的文字（气泡、提示、任务清单标题）和头顶动态目前只有中文。
+- mod 只有中文和英文两种文字，其他语言的游戏显示英文。回给 Claude 的工具结果文字是中文（Claude 会用你说话的语言转述）。
 - 装了 MelonLoader 后游戏启动会慢几秒，隔很久第一次打开会更慢，见 [INSTALL.zh-CN.md](INSTALL.zh-CN.md) 的排错表。
 - 游戏大约 30 秒才存一次盘，会话进行中存档里可能是 Claude 设的动作；mod 会在会话结束或下次启动时复原。
 - 番茄钟状态不进存档（游戏本身如此），重启游戏后回到「待开始」。
@@ -125,7 +128,8 @@ claude plugin marketplace remove cozy-room-local
 - [ ] **番茄钟反向联动**：番茄钟到了休息时间，Claude Code 弹一条「该休息了」，状态栏显示休息倒计时。
 - [ ] **每日小结 memo**：每天结束时留一条 `[Claude]` memo：今天和 Claude 干了几个小时、几个会话、主要改了哪些项目。
 - [ ] **小人表情**：任务成功时冒个开心的表情（游戏的表情功能是给联机用的，单人能不能用还没验证）。
-- [ ] **多语言**：游戏里的文字和头顶动态跟随游戏语言，现在只有中文。
+- [x] **多语言**：mod 的文字跟着游戏语言在中文和英文之间切换。
+- [ ] **更多语言**：游戏还支持韩语、日语等 14 种语言，mod 目前对这些都显示英文。
 - [ ] **在真实联机房间里验证联机保护**。
 
 不打算做的：把 Claude 的状态广播给联机好友（违反「不碰联机」），按 Claude 的用量给游戏奖励（违反「不改数值」）。

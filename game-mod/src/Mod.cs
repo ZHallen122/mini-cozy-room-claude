@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.IO;
 using MelonLoader;
 using MelonLoader.Utils;
 
-[assembly: MelonInfo(typeof(CozyClaude.Mod), "CozyClaude", "0.4.0", "ZHallen122")]
+[assembly: MelonInfo(typeof(CozyClaude.Mod), "CozyClaude", "0.4.1", "ZHallen122")]
 [assembly: MelonGame("TesseractStudio", "MiniCozyRoom")]
 
 namespace CozyClaude
@@ -25,6 +25,7 @@ namespace CozyClaude
         {
             Directory.CreateDirectory(Paths.Root);
             _cfg = Config.Load();
+            Lang.Init(_cfg);
             _health = new Health();
             _room = new RoomDriver(_cfg, _health);
             _status = new StatusFile();
@@ -50,6 +51,7 @@ namespace CozyClaude
                 _wasReady = ready;
                 if (ready)
                 {
+                    Lang.Tick();
                     // the bubble follows the character every frame; everything else runs at 4 Hz
                     if (UnityEngine.Time.unscaledTime >= _nextApply)
                     {
@@ -196,6 +198,16 @@ namespace CozyClaude
                 }
                 case "streset": UnityEngine.Object.FindObjectOfType<Il2Cpp.TimerManager>().SessionTimerSystem.Reset(); break;
                 case "coop": RoomDriver.SimulateCoop = arg == "on"; break;
+                case "langs":
+                {
+                    var lm = Il2CppTS.Singleton<Il2Cppcozyhouse.LanguageManager>.Instance;
+                    emit(Lang.Describe() + $" current={lm.currentLanguage}");
+                    foreach (var l in lm.supportedLanguages) emit("supported " + l);
+                    break;
+                }
+                case "setlang": Il2CppTS.Singleton<Il2Cppcozyhouse.LanguageManager>.Instance.ChangeLanguage(arg); break;
+                // the path the settings menu takes (index into the game's language list)
+                case "gmlang": Il2CppTS.Singleton<Il2Cppcozyhouse.GameManager>.Instance.ChangeLanguage(int.Parse(arg)); break;
                 case "tray":
                     emit($"tray init={Il2CppUtils.TrayIcon.IsInitialized()} hiddenFromTaskbar={Il2CppUtils.TrayIcon.isHiddenFromTaskbar} tip='{Il2CppUtils.TrayIcon.notifyIconData.szTip}' hwnd={Il2CppUtils.TrayIcon.unityWindowHandle}");
                     break;

@@ -316,7 +316,7 @@ namespace CozyClaude
             {
                 _health.Run(Feature.Waiting, () =>
                 {
-                    _bubble.Show(s.Waiting > 1 ? $"{_cfg.WaitingText} ×{s.Waiting}" : _cfg.WaitingText);
+                    _bubble.Show(s.Waiting > 1 ? $"{_cfg.Waiting()} ×{s.Waiting}" : _cfg.Waiting());
                     if (_cfg.PetNudgeWhileWaiting && Time.unscaledTime >= _nextNudge)
                     {
                         _nextNudge = Time.unscaledTime + 6f;
@@ -328,7 +328,7 @@ namespace CozyClaude
             }
             if (_cfg.ShowActivity && Applied == Phase.Working && !string.IsNullOrEmpty(s.Activity) && !_health.IsBroken(Feature.Activity))
             {
-                _health.Run(Feature.Activity, () => _bubble.Show(s.Activity, emphasized: false));
+                _health.Run(Feature.Activity, () => _bubble.Show(Activity.Text(s.Activity), emphasized: false));
                 if (!_health.IsBroken(Feature.Activity)) return;
             }
             _bubble.Hide();
@@ -445,16 +445,22 @@ namespace CozyClaude
             if (_cfg.TimerMode == "pomodoro")
             {
                 var st = tm.SessionTimerSystem;
-                return $"{st.CurrentStatus.Value} {Clock(st.CurrentTimeSeconds.Value)}{(st.IsPlaying.Value ? "" : " ⏸")}";
+                return $"🍅 {PomodoroPhase(st.CurrentStatus.Value)} {Clock(st.CurrentTimeSeconds.Value)}{(st.IsPlaying.Value ? "" : Paused)}";
             }
             var sw = tm.StopwatchSystem;
-            var text = $"{Clock(sw.TotalSecond.Value)}{(sw.IsPlaying.Value ? "" : " ⏸")}";
+            var text = $"{Clock(sw.TotalSecond.Value)}{(sw.IsPlaying.Value ? "" : Paused)}";
             // a pomodoro the user (or Claude, when asked) started shows too
             var pomo = tm.SessionTimerSystem;
             if (pomo.CurrentStatus.Value != Il2Cpp.ETimerStatus.Ready)
-                text += $" · 🍅 {(pomo.CurrentStatus.Value == Il2Cpp.ETimerStatus.Break ? "休息" : "专注")} {Clock(pomo.CurrentTimeSeconds.Value)}{(pomo.IsPlaying.Value ? "" : " ⏸")}";
+                text += $" · 🍅 {PomodoroPhase(pomo.CurrentStatus.Value)} {Clock(pomo.CurrentTimeSeconds.Value)}{(pomo.IsPlaying.Value ? "" : Paused)}";
             return text;
         }
+
+        // Shown in the Claude Code status line through room.json, in the room's language.
+        private static string Paused => Lang.T(" (暂停)", " (paused)");
+
+        private static string PomodoroPhase(Il2Cpp.ETimerStatus s) =>
+            s == Il2Cpp.ETimerStatus.Break ? Lang.T("休息", "Break") : s == Il2Cpp.ETimerStatus.Ready ? Lang.T("待开始", "Ready") : Lang.T("专注", "Focus");
 
         internal static string Clock(float seconds)
         {

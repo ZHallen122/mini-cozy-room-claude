@@ -19,7 +19,7 @@ Makes the room in [Mini Cozy Room: Lo-Fi](https://store.steampowered.com/app/351
 
 > A personal, unofficial mod, not affiliated with the game's developer. Windows and the Steam version of the game only.
 
-> The in-game texts (bubbles, toasts, task list titles) and the activity lines are currently in Chinese only. See TODO.
+> The mod's texts follow the game's language: Chinese (Simplified or Traditional) shows Chinese, every other language shows English. Switch the language in the game's settings and the room and the Claude Code hint line follow.
 
 ## Two parts
 
@@ -82,13 +82,14 @@ The game awards experience over time while music or ambience is **audible**. So 
 | `RainSoundKey` | `20005` | Which ambient sound is the rain |
 | `RainUnmutes` | `false` | Unmute muted ambience for the rain |
 | `PetNudgeWhileWaiting` | `true` | The pet reacts while Claude waits for you |
-| `WaitingText` | `"Claude 在等你确认"` | Bubble text while Claude waits for you |
+| `WaitingText` | `""` | Bubble text while Claude waits for you; empty means the default in the current language |
 | `MaxSubagentPets` | `3` | Maximum number of extra pets for subagents |
 | `ShowActivity` | `true` | Show what Claude is doing in the bubble |
 | `SyncTaskList` | `true` | Mirror Claude's tasks into a todo list in the room |
 | `AttentionWhenHidden` | `true` | While the game is minimized or in the tray and Claude waits: flash the taskbar and change the tray tooltip |
 | `AttentionSound` | `false` | Also play the timer sound you picked in the game |
 | `AttentionRestoreWindow` | `false` | Also bring the game window back |
+| `Language` | `"auto"` | `auto` follows the game's language; `zh` or `en` force Chinese or English |
 
 ## Uninstall
 
@@ -109,7 +110,7 @@ claude plugin marketplace remove cozy-room-local
 ## Known limitations
 
 - Tested only with game version 1.07.01 (Unity 6000.3.22f1) and Claude Code 2.1.299. After a game update MelonLoader may fail to start ([MelonLoader#1159](https://github.com/LavaGang/MelonLoader/issues/1159)); the status line then says the room is offline and Claude Code is unaffected.
-- In-game texts and activity lines are Chinese only for now.
+- The mod's texts exist in Chinese and English only; games in other languages get English. The room tools' replies to Claude are in Chinese (Claude relays them in your language).
 - With MelonLoader the game starts a few seconds slower, more on the first start after a long break; see the troubleshooting table in [INSTALL.md](INSTALL.md).
 - The game saves about every 30 seconds, so mid-session the save may hold the activity Claude set; the mod restores it when the session ends or on the next start.
 - The pomodoro state isn't saved (the game doesn't save it), so it is back to "ready" after a restart.
@@ -127,7 +128,8 @@ Ideas not built yet (pick one up if you like):
 - [ ] **Pomodoro back to Claude Code**: when the pomodoro reaches a break, Claude Code shows "time for a break" and the status line counts down the break.
 - [ ] **Daily summary memo**: at the end of the day, a `[Claude]` memo with how many hours you worked with Claude, how many sessions, and which projects.
 - [ ] **Character emotes**: a happy emote when a task succeeds (the game's emotes are built for co-op; whether they work in single player is unverified).
-- [ ] **Localization**: in-game texts and activity lines in the game's language instead of Chinese only.
+- [x] **Localization**: the mod's texts switch between Chinese and English with the game's language.
+- [ ] **More languages**: the game also supports Korean, Japanese and 12 more; the mod shows English for those.
 - [ ] **Verify the co-op guard in a real co-op room**.
 
 Not planned: broadcasting Claude's state to co-op friends (would break "co-op is left alone"), or game rewards based on Claude usage (would change progression).

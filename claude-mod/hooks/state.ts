@@ -49,7 +49,8 @@ export function fresh(sid: string, now: number): SessionState {
 
 const MAX_TASKS = 30
 const MAX_SUBJECT = 80
-const THINKING = '思考中…'
+// what the bubble shows between tools; activity values are codes the game mod words in the room's language
+const THINKING = 'thinking'
 
 function clip(text: string, max: number): string {
   const t = text.replace(/\s+/g, ' ').trim()
@@ -152,53 +153,53 @@ export function taskIdFrom(response: unknown): string | undefined {
 const TEST = /\b(test|tests|pytest|jest|vitest|mocha|cargo test|go test|dotnet test|npm (run )?test|pnpm test|yarn test)\b/
 const BUILD = /\b(build|tsc|compile|make|cmake|msbuild|webpack|vite build|gradle|mvn)\b/
 
-// One short line for the bubble: what a tool call is about to do. Undefined keeps the current line (for calls
-// that say nothing useful on their own); null clears it.
+// What a tool call is about to do, as a code for the bubble ("test", "edit:README.md"); the game mod words it in
+// the room's language. Undefined keeps the current one (for calls that say nothing useful on their own).
 export function describeTool(tool: string, input: Record<string, unknown>): string | null | undefined {
   switch (tool) {
     case 'Bash':
     case 'PowerShell': {
       const cmd = typeof input.command === 'string' ? input.command : ''
       // git first: a commit message may well mention "test" or "build"
-      if (/\bgit\s+commit\b/.test(cmd)) return '正在提交代码…'
-      if (/\bgit\s+(push|pull|fetch|clone)\b/.test(cmd)) return '正在同步代码…'
-      if (TEST.test(cmd)) return '正在跑测试…'
-      if (/\b(npm|pnpm|yarn)\s+(i|install|add)\b|\bpip\s+install\b|\bdotnet\s+(restore|add)\b/.test(cmd)) return '正在装依赖…'
-      if (BUILD.test(cmd)) return '正在编译…'
-      return '正在跑命令…'
+      if (/\bgit\s+commit\b/.test(cmd)) return 'commit'
+      if (/\bgit\s+(push|pull|fetch|clone)\b/.test(cmd)) return 'sync'
+      if (TEST.test(cmd)) return 'test'
+      if (/\b(npm|pnpm|yarn)\s+(i|install|add)\b|\bpip\s+install\b|\bdotnet\s+(restore|add)\b/.test(cmd)) return 'install'
+      if (BUILD.test(cmd)) return 'build'
+      return 'command'
     }
     case 'Edit':
     case 'Write':
     case 'MultiEdit':
     case 'NotebookEdit': {
       const name = base(input.file_path ?? input.notebook_path)
-      return name ? `在改 ${clip(name, 28)}` : '在改代码…'
+      return name ? `edit:${clip(name, 28)}` : 'edit'
     }
     case 'Read': {
       const name = base(input.file_path)
-      return name ? `在读 ${clip(name, 28)}` : '在读代码…'
+      return name ? `read:${clip(name, 28)}` : 'read'
     }
     case 'Grep':
     case 'Glob':
-      return '在找代码…'
+      return 'search'
     case 'WebFetch':
     case 'WebSearch':
-      return '在查资料…'
+      return 'web'
     case 'Agent':
     case 'Task':
-      return '派出了帮手…'
+      return 'agent'
     case 'TaskCreate':
     case 'TaskUpdate':
     case 'TodoWrite':
-      return '在排计划…'
+      return 'plan'
     case 'ToolSearch':
     case 'TaskList':
     case 'TaskGet':
       return undefined
     default:
-      if (tool.startsWith('mcp__cozy-room__')) return '在布置房间…'
-      if (tool.startsWith('mcp__')) return `在用 ${clip(tool.split('__')[1] ?? tool, 20)}`
-      return `在用 ${clip(tool, 20)}`
+      if (tool.startsWith('mcp__cozy-room__')) return 'room'
+      if (tool.startsWith('mcp__')) return `tool:${clip(tool.split('__')[1] ?? tool, 20)}`
+      return `tool:${clip(tool, 20)}`
   }
 }
 
@@ -214,6 +215,13 @@ export function serialize(s: SessionState, token: string, now: number): string {
 // session ids are UUIDs; anything else is reduced to a safe file name
 export function fileName(sid: string): string {
   return sid.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 80) + '.json'
+}
+
+const FEATURES_EN: Record<string, string> = {
+  Guard: 'co-op guard', Work: 'work sync', Waiting: 'waiting reminder', Timer: 'timer link',
+  Restore: 'restore on session end', Rain: 'rain on errors', Status: 'room status line', Subagents: 'subagent pets',
+  Notes: "Claude's memos/todos", Pomodoro: "Claude's pomodoro", Music: "Claude's music", Ambience: "Claude's ambience",
+  Tasks: 'task list sync', Activity: 'activity line', Attention: 'hidden-window reminder',
 }
 
 const FEATURES: Record<string, string> = {
@@ -232,6 +240,8 @@ export type RoomStatus = {
   timer?: string | null
   claudeTodaySeconds?: number
   health?: Record<string, string>
+  // the room's language, chosen by the game mod: "zh" or "en"
+  lang?: string
 }
 
 function duration(seconds: number): string {
@@ -241,24 +251,31 @@ function duration(seconds: number): string {
 
 // One status-line row from the room.json the game mod writes every 2 s.
 // Only symbols that are emoji by default (🏠 🎵 ⏰ 🍅): terminals agree they are two cells wide. Symbols such as
-// ⏸ ⏱ ⚠ ♪ have no agreed width and push the rest of the line around, so the game mod's ⏸ is spelled out.
-function plainTimer(timer: string): string {
-  return timer.replace(/\s*⏸/g, ' (暂停)')
+// ⏸ ⏱ ⚠ ♪ have no agreed width and push the rest of the line around; older game mods still send ⏸.
+function plainTimer(timer: string, zh: boolean): string {
+  return timer.replace(/\s*⏸/g, zh ? ' (暂停)' : ' (paused)')
 }
 
-// compact: for the desktop app, where the line shares a row with the model picker and gets cut early — no song,
-// the timer without the pomodoro, and broken features only counted.
+// The summary of the room, in the room's language (room.json says which; a room.json left behind by a closed game
+// still does). compact: for the desktop app, where the line shares a row with the model picker and gets cut early —
+// no song, the timer without the pomodoro, and broken features only counted.
 export function statusLine(room: RoomStatus | undefined, now: number, compact = false): string {
+  const zh = room?.lang !== 'en'
+  const t = (z: string, e: string) => (zh ? z : e)
   if (!room || typeof room.updatedAt !== 'number' || now - room.updatedAt > 10_000)
-    return compact ? '🏠 房间离线' : '🏠 房间离线 (游戏没开，或 CozyClaude mod 没加载)'
+    return compact ? t('🏠 房间离线', '🏠 Room offline')
+      : t('🏠 房间离线 (游戏没开，或 CozyClaude mod 没加载)', '🏠 Room offline (game closed, or the CozyClaude mod not loaded)')
   const parts: string[] = []
-  if (!room.ready) parts.push('房间加载中')
-  if (room.blocked) parts.push(compact ? '联机中' : '联机中，暂停联动')
-  if (room.music && !compact) parts.push(`🎵 ${room.music}${room.musicPlaying ? '' : ' (暂停)'}`)
-  if (room.timer) parts.push(`⏰ ${plainTimer(compact ? room.timer.split(' · ')[0] ?? room.timer : room.timer)}`)
-  if (typeof room.claudeTodaySeconds === 'number') parts.push(`今日 Claude ${duration(room.claudeTodaySeconds)}`)
+  if (!room.ready) parts.push(t('房间加载中', 'Room loading'))
+  if (room.blocked) parts.push(compact ? t('联机中', 'Co-op') : t('联机中，暂停联动', 'In co-op, link paused'))
+  if (room.music && !compact) parts.push(`🎵 ${room.music}${room.musicPlaying ? '' : t(' (暂停)', ' (paused)')}`)
+  if (room.timer) parts.push(`⏰ ${plainTimer(compact ? room.timer.split(' · ')[0] ?? room.timer : room.timer, zh)}`)
+  if (typeof room.claudeTodaySeconds === 'number')
+    parts.push(t(`今日 Claude ${duration(room.claudeTodaySeconds)}`, `Claude today ${duration(room.claudeTodaySeconds)}`))
   const broken = Object.entries(room.health ?? {}).filter(([, value]) => value.startsWith('incompatible'))
-  if (compact && broken.length > 0) parts.push(`注意：${broken.length} 项不兼容`)
-  if (!compact) for (const [key] of broken) parts.push(`注意：${FEATURES[key] ?? key}不兼容`)
+  if (compact && broken.length > 0) parts.push(t(`注意：${broken.length} 项不兼容`, `Note: ${broken.length} incompatible`))
+  if (!compact)
+    for (const [key] of broken)
+      parts.push(t(`注意：${FEATURES[key] ?? key}不兼容`, `Note: ${FEATURES_EN[key] ?? key} incompatible`))
   return `🏠 ${parts.join(' · ')}`
 }

@@ -14,8 +14,6 @@ namespace CozyClaude
     // the player's own timer sound or bring the window back. Everything is undone when the waiting ends.
     internal sealed class Attention
     {
-        private const string Tooltip = "Claude 在等你确认";
-
         private readonly Config _cfg;
         private readonly Health _health;
         private bool _active;
@@ -77,7 +75,7 @@ namespace CozyClaude
             if (TrayIcon.IsInitialized())
             {
                 _originalTooltip ??= CurrentTooltip();
-                TrayIcon.UpdateTooltip(Tooltip);
+                TrayIcon.UpdateTooltip(_cfg.Waiting());
             }
             if (_cfg.AttentionSound) PlayTimerSound();
             if (_cfg.AttentionRestoreWindow)

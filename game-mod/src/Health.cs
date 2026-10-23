@@ -31,6 +31,27 @@ namespace CozyClaude
             [Feature.Attention] = "缩小时提醒",
         };
 
+        public static readonly Dictionary<Feature, string> NamesEn = new()
+        {
+            [Feature.Guard] = "co-op guard",
+            [Feature.Work] = "work sync",
+            [Feature.Waiting] = "waiting reminder",
+            [Feature.Timer] = "timer link",
+            [Feature.Restore] = "restore on session end",
+            [Feature.Rain] = "rain on errors",
+            [Feature.Status] = "room status line",
+            [Feature.Subagents] = "subagent pets",
+            [Feature.Notes] = "Claude's memos/todos",
+            [Feature.Pomodoro] = "Claude's pomodoro",
+            [Feature.Music] = "Claude's music",
+            [Feature.Ambience] = "Claude's ambience",
+            [Feature.Tasks] = "task list sync",
+            [Feature.Activity] = "activity line",
+            [Feature.Attention] = "hidden-window reminder",
+        };
+
+        public static string Name(Feature f) => Lang.Zh ? Names[f] : NamesEn[f];
+
         private readonly Dictionary<Feature, string> _broken = new();
         private readonly Dictionary<Feature, string> _notes = new();
         private readonly Queue<string> _pendingToasts = new();
@@ -68,7 +89,8 @@ namespace CozyClaude
             var reason = $"{e.GetType().Name}: {e.Message}";
             _broken[f] = reason;
             MelonLogger.Error($"[{Names[f]}] incompatible, disabled: {e}");
-            _pendingToasts.Enqueue($"CozyClaude：{Names[f]} 与当前游戏版本不兼容，已停用");
+            _pendingToasts.Enqueue(Lang.T($"CozyClaude：{Names[f]} 与当前游戏版本不兼容，已停用",
+                $"CozyClaude: {NamesEn[f]} doesn't work with this game version and was switched off"));
         }
 
         // Expected, non-fatal conditions, e.g. "no desk in this room". Cleared by passing null.

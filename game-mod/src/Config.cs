@@ -23,7 +23,8 @@ namespace CozyClaude
         // change progression. Set true to unmute for the rain anyway (mutes again afterwards).
         public bool RainUnmutes { get; set; } = false;
         public bool PetNudgeWhileWaiting { get; set; } = true;
-        public string WaitingText { get; set; } = "Claude 在等你确认";
+        // Empty: the reminder in the game's language. Anything else is shown as written.
+        public string WaitingText { get; set; } = "";
         public int MaxSubagentPets { get; set; } = 3;
         // A line above the character on what Claude is doing ("正在跑测试…", "在改 README.md").
         public bool ShowActivity { get; set; } = true;
@@ -35,6 +36,15 @@ namespace CozyClaude
         public bool AttentionWhenHidden { get; set; } = true;
         public bool AttentionSound { get; set; } = false;
         public bool AttentionRestoreWindow { get; set; } = false;
+        // "auto": follow the game's language (Chinese, otherwise English). "zh" or "en" force one.
+        public string Language { get; set; } = "auto";
+
+        // The waiting reminder: the player's own text, or the default in the current language. Older versions wrote
+        // the Chinese default into config.json, so that one counts as "default" too.
+        public string Waiting() =>
+            string.IsNullOrEmpty(WaitingText) || WaitingText == "Claude 在等你确认"
+                ? Lang.T("Claude 在等你确认", "Claude is waiting for you")
+                : WaitingText;
 
         public static Config Load()
         {

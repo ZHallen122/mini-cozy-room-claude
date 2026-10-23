@@ -86,6 +86,10 @@ Journal for the mod. Anything not written here is lost at the next context compa
     the tray (`isHiddenFromTaskbar`), and exposes `UpdateTooltip`; the original tooltip is in
     `notifyIconData.szTip` ("迷你舒适房间：Lo-Fi" in Chinese). `FlashWindowEx(FLASHW_TRAY|FLASHW_TIMER)` on that
     window flashes the taskbar button until `FLASHW_STOP`.
+22. Language: `GameManager.CurrentLocale` gave nothing usable here; `LanguageManager.currentLanguage` holds names
+    like `ChineseSimplified` / `English` / `Spanish`. The settings menu path is `GameManager.ChangeLanguage(int)`,
+    whose index order is NOT `LanguageManager.supportedLanguages`' order (0 English, 1 ChineseSimplified, 4 Spanish).
+    `LanguageManager.ChangeLanguage(string)` alone changes the name but not the UI.
 21. Claude Code's task list comes two ways: TaskCreate/TaskUpdate (+ `classic.TaskCreated` / `TaskCompleted`
     events, verified firing in `claude -p` 2.1.299) and legacy TodoWrite (whole list each call). The plugin handles
     both; `PostToolUse` of TaskCreate is a backup for the id.
@@ -161,6 +165,19 @@ heartbeat; status line via `$.ui.status` from `room.json`.
   `mini-cozy-room-mod-save-backup\2026-10-22-features\`. Dev console additions: `tray`, `retitle <key> <title>`.
 - `claude plugin test claude-mod`: 23 pass; `tsc` strict: clean.
 
+## Language (2026-10-22)
+
+- Game mod 0.4.1 / plugin 0.4.0. `Lang` picks zh for any Chinese game language, en otherwise (config `Language`
+  auto|zh|en), re-read every 2 s. In-game texts (waiting reminder, tray tooltip, incompatibility toast, Claude's
+  operation toasts, task list title) and room.json's timer text follow it; room.json carries `lang` and the plugin
+  writes the status line in that language. The plugin now sends activity as codes (`test`, `edit:README.md`, ...);
+  `Activity.Text` words them, and passes through finished text from older plugins. Tool replies to Claude stay
+  Chinese.
+- Verified in game: Chinese → bubble 在改 README.md, list "[Claude] demo 任务"; settings-path switch to English
+  (`gmlang 0`) → full English UI, bubble "Claude is waiting for you" / "Running tests…", list "[Claude] docs-site
+  tasks", room.json lang en; back to Chinese (`gmlang 1`), persisted across a restart. Plugin tests 26 pass.
+- Dev console additions: `langs`, `setlang <name>`, `gmlang <index>`.
+
 ## Log
 - 2026-10-21: backups; MelonLoader as `winmm.dll`; probe; full mod; plugin; verification above; plugin installed
   at user scope from the local folder marketplace `cozy-room-local`. Nothing committed.
@@ -168,3 +185,5 @@ heartbeat; status line via `$.ui.status` from `room.json`.
   restored as above. Nothing committed.
 - 2026-10-22: MelonLoader console hidden / start screen off / offline generation (`UserData\Loader.cfg`); task
   list sync, activity line, hidden-window reminder (plugin 0.3.0, game mod 0.4.0).
+- 2026-10-22 (later): status line moved to the prompt hint line's tail (desktop: short pinned form); mod texts
+  follow the game's language (game mod 0.4.1, plugin 0.4.0).

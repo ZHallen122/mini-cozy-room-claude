@@ -63,6 +63,8 @@ namespace CozyClaude
                 ["subagents"] = snap.Subagents,
                 ["bridgeProblem"] = snap.Problem,
                 ["claudeTodaySeconds"] = (long)_todaySeconds,
+                // the room's language, so the Claude Code side writes its status line in the same one
+                ["lang"] = Lang.Current,
             };
             if (ready)
                 health.Run(Feature.Status, () =>
