@@ -6,7 +6,7 @@ using MelonLoader;
 
 namespace CozyClaude
 {
-    internal enum Feature { Guard, Work, Waiting, Timer, Restore, Rain, Status, Subagents, Notes, Pomodoro, Music, Ambience, Tasks, Activity, Attention }
+    internal enum Feature { Guard, Work, Waiting, Timer, Restore, Rain, Status, Subagents, Notes, Pomodoro, Music, Ambience, Tasks, Activity, Attention, Celebrate, Sleepy }
 
     // Per-feature status. A feature that throws (typically MissingMethodException / TypeLoadException after a
     // game update) is switched off, named in the log, in a one-time in-game toast and in the Claude Code status line.
@@ -29,6 +29,8 @@ namespace CozyClaude
             [Feature.Tasks] = "任务清单同步",
             [Feature.Activity] = "头顶动态",
             [Feature.Attention] = "缩小时提醒",
+            [Feature.Celebrate] = "庆祝特效",
+            [Feature.Sleepy] = "上下文快满犯困",
         };
 
         public static readonly Dictionary<Feature, string> NamesEn = new()
@@ -48,6 +50,8 @@ namespace CozyClaude
             [Feature.Tasks] = "task list sync",
             [Feature.Activity] = "activity line",
             [Feature.Attention] = "hidden-window reminder",
+            [Feature.Celebrate] = "celebrations",
+            [Feature.Sleepy] = "sleepy when context is full",
         };
 
         public static string Name(Feature f) => Lang.Zh ? Names[f] : NamesEn[f];

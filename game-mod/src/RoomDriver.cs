@@ -22,6 +22,7 @@ namespace CozyClaude
         private readonly Journal _journal;
         private readonly Bubble _bubble = new();
         private readonly PetSquad _pets = new();
+        private readonly Effects _effects = new();
         private readonly TaskSync _tasks;
         private readonly Attention _attention;
         private Il2Cpp.TimerManager _timerManager;
@@ -30,6 +31,15 @@ namespace CozyClaude
         private bool _blocked;
         private float _nextNudge;
         private string _lastSignature;
+        // celebrations: the newest one already played, and what the bubble says until when
+        private long _celebratedAt;
+        private string _partyKind;
+        private float _partyUntil;
+        private float _lastTestsParty = -999f;
+        // the sleepy character: the session whose context is nearly full, and the "awake again" line after it
+        private string _sleepySid;
+        private int _sleepyPercent;
+        private float _awakeUntil;
 
         // dev console only: behave as if in a co-op room
         internal static bool SimulateCoop;
@@ -65,6 +75,7 @@ namespace CozyClaude
             if (target != Applied) Transition(target);
 
             ForgetRestoreOnceSaved();
+            UpdateFun(s);
             UpdateBubble(s);
             _attention.Update(Applied == Phase.Off ? 0 : s.Waiting);
             _tasks.Tick(s);
@@ -106,6 +117,8 @@ namespace CozyClaude
                 _ = GameInfo.Instance.Pets.Count;
             });
             _health.Run(Feature.Status, () => Need(Singleton<Il2Cppcozyhouse.musicplayer.MusicPlayer>.Instance, "MusicPlayer"));
+            _health.Run(Feature.Celebrate, () => Need(Singleton<ToastManager>.Instance, "ToastManager"));
+            _health.Run(Feature.Sleepy, () => Need(Singleton<ToastManager>.Instance, "ToastManager"));
             _tasks.SelfCheck();
             _attention.SelfCheck();
         }
@@ -114,7 +127,13 @@ namespace CozyClaude
         public void FollowBubble()
         {
             if (_bubble.Visible) _health.Run(Feature.Waiting, _bubble.Follow);
+            if (_blocked) return;
+            if (!_health.Run(Feature.Celebrate, _effects.AnimateConfetti)) _effects.ClearConfetti();
+            if (!_health.Run(Feature.Sleepy, _effects.AnimateZees)) _effects.ClearZees();
         }
+
+        // dev console: play a celebration now, as if a session had just sent it
+        internal void DevParty(string kind) => _health.Run(Feature.Celebrate, () => Celebrate(kind));
 
         // Called when the game quits: put the room back so the save never keeps Claude's state.
         public void Shutdown()
@@ -125,6 +144,7 @@ namespace CozyClaude
             _health.Run(Feature.Restore, RestoreActivity);
             _attention.Stop();
             _bubble.Destroy();
+            _effects.Destroy();
             _pets.Clear();
         }
 
@@ -161,6 +181,8 @@ namespace CozyClaude
             {
                 _bubble.Hide();
                 _pets.Clear();
+                _effects.ClearConfetti();
+                _effects.ClearZees();
                 _attention.Stop();
                 _health.Note(Feature.Guard, "联机房间中，暂停联动");
             }
@@ -304,7 +326,74 @@ namespace CozyClaude
             world.UpdateActivityEffect();
         }
 
-        // The bubble shows the "waiting for you" reminder first; otherwise, while Claude works, what it is doing.
+        // Celebrations and the sleepy character. Both only decorate: no activity change, no sound, nothing saved.
+        private void UpdateFun(Snapshot s)
+        {
+            if (Applied == Phase.Off)
+            {
+                _effects.ClearConfetti();
+                _effects.ClearZees();
+                _partyUntil = 0f;
+                _awakeUntil = 0f;
+                _sleepySid = null;
+                return;
+            }
+            if (s.CelebrationAt > _celebratedAt)
+            {
+                _celebratedAt = s.CelebrationAt;
+                // only a fresh one: a game started (or a co-op room left) later doesn't replay old news. Passing tests
+                // come often, so at most one party for them every 90 s.
+                var fresh = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - s.CelebrationAt < 15_000;
+                var tests = s.Celebration == "tests";
+                if (_cfg.Celebrate && fresh && !(tests && (!_cfg.CelebrateTests || Time.unscaledTime - _lastTestsParty < 90f)))
+                    _health.Run(Feature.Celebrate, () => Celebrate(s.Celebration));
+            }
+            if (_health.IsBroken(Feature.Sleepy)) return;
+            var threshold = _cfg.SleepyAtContextPercent;
+            var sleepy = threshold > 0 && s.Context >= threshold;
+            if (!sleepy && _sleepySid != null)
+            {
+                // the same conversation got compacted (or cleared): wide awake again. A session that ended or another
+                // one that took over just ends the nap quietly.
+                var was = s.Sessions.FirstOrDefault(x => x.Sid == _sleepySid);
+                if (was != null && !(was.Context >= threshold)) _awakeUntil = Time.unscaledTime + 4f;
+                _sleepySid = null;
+            }
+            if (sleepy)
+            {
+                if (_sleepySid == null) MelonLogger.Msg($"sleepy: context {s.Context}%");
+                _sleepySid = s.ContextSid;
+                _sleepyPercent = s.Context ?? 0;
+            }
+            _effects.SetSleepy(sleepy);
+        }
+
+        private void Celebrate(string kind)
+        {
+            MelonLogger.Msg("celebrating " + kind);
+            _effects.Celebrate(kind);
+            _partyKind = kind;
+            _partyUntil = Time.unscaledTime + 3.5f;
+            if (kind == "tests") _lastTestsParty = Time.unscaledTime;
+            var pet = Singleton<World>.Instance.petScript;
+            if (pet != null && pet.gameObject.activeInHierarchy)
+            {
+                // the pet's reaction may count as a touch in the player's stats: keep those the player's
+                var stats = StatSnapshot.Take();
+                pet.TouchPetReAction();
+                stats.Restore();
+            }
+        }
+
+        private static string PartyText(string kind) => kind switch
+        {
+            "merge" => Lang.T("PR 合并啦！", "PR merged!"),
+            "tests" => Lang.T("测试全过了！", "All tests pass!"),
+            _ => Lang.T("提交成功！", "Committed!"),
+        };
+
+        // The bubble shows the "waiting for you" reminder first, then a celebration, then (while Claude works) what it
+        // is doing; resting with a nearly full context, how sleepy it is.
         private void UpdateBubble(Snapshot s)
         {
             if (Applied == Phase.Off)
@@ -326,10 +415,26 @@ namespace CozyClaude
                 });
                 if (!_health.IsBroken(Feature.Waiting)) return;
             }
+            if (Time.unscaledTime < _partyUntil && !_health.IsBroken(Feature.Celebrate))
+            {
+                _health.Run(Feature.Celebrate, () => _bubble.Show(PartyText(_partyKind)));
+                if (!_health.IsBroken(Feature.Celebrate)) return;
+            }
+            if (Time.unscaledTime < _awakeUntil && !_health.IsBroken(Feature.Sleepy))
+            {
+                _health.Run(Feature.Sleepy, () => _bubble.Show(Lang.T("睡醒了，精神满满！", "Fresh context, wide awake!"), emphasized: false));
+                if (!_health.IsBroken(Feature.Sleepy)) return;
+            }
             if (_cfg.ShowActivity && Applied == Phase.Working && !string.IsNullOrEmpty(s.Activity) && !_health.IsBroken(Feature.Activity))
             {
                 _health.Run(Feature.Activity, () => _bubble.Show(Activity.Text(s.Activity), emphasized: false));
                 if (!_health.IsBroken(Feature.Activity)) return;
+            }
+            if (_sleepySid != null && Applied == Phase.Resting && !_health.IsBroken(Feature.Sleepy))
+            {
+                _health.Run(Feature.Sleepy, () => _bubble.Show(
+                    Lang.T($"上下文快满了，好困… {_sleepyPercent}%", $"Context nearly full, so sleepy… {_sleepyPercent}%"), emphasized: false));
+                if (!_health.IsBroken(Feature.Sleepy)) return;
             }
             _bubble.Hide();
         }

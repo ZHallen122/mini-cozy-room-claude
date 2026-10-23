@@ -21,12 +21,19 @@ namespace CozyClaude
         public string Activity;
         // every live session, with its task list (empty when Claude made none)
         public List<LiveSession> Sessions = new();
+        // the newest celebration of any live session ("commit", "merge", "tests") and its time, unix ms
+        public string Celebration;
+        public long CelebrationAt;
+        // how full the most recently active session's context window is, in percent (null: not measured yet)
+        public int? Context;
+        public string ContextSid;
     }
 
     internal sealed class LiveSession
     {
         public string Sid;
         public string Project;
+        public int? Context;
         public List<SessionTask> Tasks = new();
     }
 
@@ -53,6 +60,10 @@ namespace CozyClaude
 
         public Snapshot Latest => _latest;
 
+        // dev console only: read just the sessions whose id starts with this (fake ones), so a test isn't mixed with
+        // the developer's own live session
+        internal static volatile string OnlySidPrefix;
+
         public SessionBridge()
         {
             _timer = new Timer(_ => Poll(), null, 0, 500);
@@ -76,11 +87,14 @@ namespace CozyClaude
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             var snap = new Snapshot();
             long activityAt = 0;
+            long contextAt = 0;
             foreach (var file in Directory.GetFiles(Paths.Sessions, "*.json"))
             {
                 var s = Read(file);
                 // Only files carrying this machine's secret count; anything else is ignored.
                 if (s == null || s.tok != secret) continue;
+                var only = OnlySidPrefix;
+                if (only != null && (s.sid == null || !s.sid.StartsWith(only))) continue;
                 var silent = now - s.updatedAt;
                 if (s.ended || silent > HeartbeatTimeoutMs)
                 {
@@ -98,8 +112,19 @@ namespace CozyClaude
                     snap.Activity = s.activity;
                     activityAt = s.eventAt;
                 }
+                if (!string.IsNullOrEmpty(s.celebrate) && s.celebrateAt > snap.CelebrationAt)
+                {
+                    snap.Celebration = s.celebrate;
+                    snap.CelebrationAt = s.celebrateAt;
+                }
+                if (s.eventAt > contextAt)
+                {
+                    snap.Context = s.context;
+                    snap.ContextSid = s.sid;
+                    contextAt = s.eventAt;
+                }
                 if (!string.IsNullOrEmpty(s.sid))
-                    snap.Sessions.Add(new LiveSession { Sid = s.sid, Project = s.project ?? "", Tasks = s.tasks ?? new List<SessionTask>() });
+                    snap.Sessions.Add(new LiveSession { Sid = s.sid, Project = s.project ?? "", Context = s.context, Tasks = s.tasks ?? new List<SessionTask>() });
             }
             return snap;
         }
@@ -138,6 +163,9 @@ namespace CozyClaude
             public string project { get; set; }
             public string activity { get; set; }
             public List<SessionTask> tasks { get; set; }
+            public string celebrate { get; set; }
+            public long celebrateAt { get; set; }
+            public int? context { get; set; }
         }
     }
 }

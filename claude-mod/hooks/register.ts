@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 import {
-  apply, type CozyEvent, describeTool, fileName, fitLine, fresh, projectName, type RoomStatus, type SessionState, serialize,
+  apply, celebrationFor, type CozyEvent, describeTool, fileName, fitLine, fresh, projectName, type RoomStatus, type SessionState, serialize,
   statusLine, statusLines, taskIdFrom,
 } from './state'
 import { type CommandReply, commandFile, replyText, type RoomTool, roomGate, TIMEOUT_TEXT, TOOLS } from './actions'
@@ -81,6 +81,17 @@ function record($: EngineInterface, sid: string | undefined, ev: CozyEvent, cwd?
 
 function recordCurrent($: EngineInterface, events: CozyEvent[]): void {
   $.session.id().then(sid => { for (const ev of events) record($, sid, ev) }, () => {})
+}
+
+// How full the context window is, for the sleepy character. Reading it without a breakdown costs nothing.
+function recordContext($: EngineInterface, sid: string | undefined): void {
+  $.session.usage().then(u => {
+    const known = sid ? sessions.get(sid)?.context : undefined
+    const percent = u.context.percent
+    // only a change is worth a file write
+    if (known !== undefined && known === (typeof percent === 'number' ? Math.round(percent) : null)) return
+    record($, sid, { kind: 'Context', percent })
+  }, () => {})
 }
 
 // What a tool call tells the room: the bubble line, and task-list changes for TaskUpdate / TodoWrite.
@@ -188,6 +199,12 @@ export const register: Register = on => {
     ).catch(($, e, next) => ({ deny: `${PLUGIN}: the room tool failed (${next.error?.message ?? 'unknown error'}). Nothing else was affected.` }))
   }
 
+  // after each turn: the context fill moved
+  on('session.measure', ($, e, next) => {
+    if (e.changed.includes('context')) recordCurrent($, [{ kind: 'Context', percent: e.context.percent }])
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
   on('classic.SessionStart', ($, e, next) => {
     record($, e.session_id, { kind: 'SessionStart', source: e.source }, e.cwd)
     return next(e)
@@ -215,6 +232,14 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
   on('classic.PostToolUse', ($, e, next) => {
     record($, e.session_id, { kind: 'PostToolUse', agent: e.agent_id }, e.cwd)
+    try {
+      const what = celebrationFor(e.tool_name, (e.tool_input ?? {}) as Record<string, unknown>, e.tool_response)
+      if (what) record($, e.session_id, { kind: 'Celebrate', what })
+    } catch {
+      // the party is cosmetic
+    }
+    // a long turn fills the context too, not only between turns
+    if (!e.agent_id) recordContext($, e.session_id)
     if (e.tool_name === 'TaskCreate') {
       // backs up TaskCreated, in case that event doesn't fire for this kind of task
       const input = (e.tool_input ?? {}) as Record<string, unknown>
