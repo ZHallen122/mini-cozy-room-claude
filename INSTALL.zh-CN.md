@@ -48,13 +48,18 @@
    `claude plugin install cozy-room@cozy-room-local --scope user`
    然后用 `claude plugin list` 确认 cozy-room 是 enabled。
 
-9. 验证：
+9. 打开 Claude 的任务工具，让任务清单能同步到房间（Claude Code 默认不给 Claude `TaskCreate` / `TaskUpdate`）。先告诉我，等我同意。然后编辑 `%USERPROFILE%\.claude\settings.json`：
+   - 文件已存在就先复制一份到同目录的 `settings.json.bak`；不存在就新建。
+   - 在 `permissions.allow` 数组里加上 `"TaskCreate"` 和 `"TaskUpdate"`（没有 `permissions` 或 `allow` 就新建）。保留其他所有键和已有条目，不要加重复项。
+   - 重新解析一遍确认是合法 JSON，并把 `permissions` 部分给我看。
+
+10. 验证：
    - 再次通过 Steam 启动游戏，等 20 秒，确认 `MelonLoader\Latest.log` 里有 `CozyClaude loaded` 和 `room ready, linking with Claude Code`，并且没有 `[ERROR]`。
    - 确认 `%LOCALAPPDATA%\CozyClaude\room.json` 存在，且里面的 `updatedAt`（毫秒时间戳）是最近几秒。
    - 运行 `claude -p "Reply with the single word ok."`，然后确认 `%LOCALAPPDATA%\CozyClaude\sessions\` 里多了一个 .json 文件，并且 Latest.log 里出现了 `phase ... -> Working` 和 `-> Off` 这样的行。
    - 游戏保持开着，不用关。
 
-10. 最后用几句话告诉我：存档备份在哪、装了什么、改了哪些文件夹、每项验证的结果，以及「请重新开一个 Claude Code 会话，状态栏和房间工具才会出现」。
+11. 最后用几句话告诉我：存档备份在哪、装了什么、改了哪些文件夹和文件（包括 settings.json）、每项验证的结果，以及「请重新开一个 Claude Code 会话，状态栏和房间工具才会出现」。
 ````
 
 ## 手动安装
@@ -79,7 +84,17 @@ claude plugin marketplace add "C:/path/to/mini-cozy-room-claude/claude-mod"
 claude plugin install cozy-room@cozy-room-local --scope user
 ```
 
-6. 启动游戏，新开一个 Claude Code 会话，状态栏出现 `🏠 …` 就装好了。
+6. **打开任务工具**（任务清单同步要用）：在 `%USERPROFILE%\.claude\settings.json` 的 `permissions.allow` 里加上 `TaskCreate` 和 `TaskUpdate`，原有内容保留：
+
+```json
+{
+  "permissions": {
+    "allow": ["TaskCreate", "TaskUpdate"]
+  }
+}
+```
+
+7. 启动游戏，新开一个 Claude Code 会话，状态栏出现 `🏠 …` 就装好了。
 
 ## 更新
 
@@ -105,6 +120,22 @@ claude plugin update cozy-room@cozy-room-local
 
 （维护者改了 `claude-mod/` 时要把 `claude-mod/.claude-plugin/plugin.json` 的 `version` 加一，否则 `plugin update` 不会拿到新代码。）
 
+## 卸载
+
+1. 关掉所有 Claude Code 会话，开一次游戏让房间复原（Claude 的任务清单也会删掉），再关掉游戏。想清掉 Claude 加的 memo 和待办，先让 Claude 用 `room_clear_claude_notes`。
+2. 卸载 Claude Code 插件：
+
+```bash
+claude plugin uninstall cozy-room@cozy-room-local
+```
+
+```bash
+claude plugin marketplace remove cozy-room-local
+```
+
+3. 删掉游戏目录里的 `Mods\CozyClaude.dll`。要连 MelonLoader 一起去掉，再删 `winmm.dll`、`MelonLoader\`、`Mods\`、`Plugins\`、`UserData\`、`UserLibs\`。
+4. 删掉 `%LOCALAPPDATA%\CozyClaude\`。也可以把 `~/.claude/settings.json` 里 `permissions.allow` 的 `TaskCreate` 和 `TaskUpdate` 删掉。
+
 ## 排错
 
 | 现象 | 原因和办法 |
@@ -116,7 +147,7 @@ claude plugin update cozy-room@cozy-room-local
 | 状态栏显示 `⚠ xx不兼容` | 游戏更新后这个功能对不上了，mod 已自动停用它，其他功能照常。日志里有原因 |
 | 状态栏没有 `🏠`、Claude 没有房间工具 | 插件装完后要新开 Claude Code 会话；用 `claude plugin list` 确认 cozy-room 是 enabled |
 | Claude 说「你在联机房间里」 | 你在联机房间里或有朋友来访，mod 按设计不动房间 |
-| 报错时没有雨声 | 环境音静音时默认不放雨声，见 [README](README.zh-CN.md)「关于经验值」 |
-| 没看到 Claude 的任务清单 | 只有 Claude 把工作拆成任务（TaskCreate / TodoWrite）时才会出现，在游戏的「待办」里；会话结束就删掉。也检查 `config.json` 里 `SyncTaskList` 是不是 `true` |
+| 报错时没有雨声 | 环境音静音时雨声也不出声，这样游戏按「有声音的时长」给的经验不受影响。想听雨声就在 `config.json` 里把 `RainUnmutes` 设成 `true` |
+| 没看到 Claude 的任务清单 | 只有 Claude 把工作拆成任务（TaskCreate / TodoWrite）时才会出现，在游戏的「待办」里；会话结束就删掉。检查 `~/.claude/settings.json` 的 `permissions.allow` 里有没有 `TaskCreate` 和 `TaskUpdate`（Claude 默认没有这两个工具），以及 `config.json` 里 `SyncTaskList` 是不是 `true` |
 | 每次启动弹出一个黑色的 MelonLoader 窗口 | `UserData\Loader.cfg` 里设 `hide_console = true`。排错时想看实时日志可以改回 `false`，日志也一直写在 `MelonLoader\Latest.log` |
 | 启动比原来慢 | MelonLoader 每次启动要先起 .NET 运行时、加载程序集。实测连续启动时多约 3 秒（不装 3.1～3.4 秒，装了 6.1～6.8 秒，到游戏初始化完成）；隔很久第一次开（文件不在系统缓存里）会慢到 20 秒左右，再开就快了 |
