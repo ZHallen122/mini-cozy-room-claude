@@ -254,7 +254,8 @@ heartbeat; status line via `$.ui.status` from `room.json`.
 - **Open:** after the demo session's Stop the room stayed in Working (bubble "Running a command…") while this
   development session was idle with a background command running; take 2 (same setup) did go to rest. Watch the
   session file around a turn end with a background task before trusting "idle = resting" in recordings; isolate
-  takes with dev `only <sid prefix>` if needed.
+  takes with dev `only <sid prefix>` if needed. Not this session's file, as far as checked: watched across a later
+  turn end (with a background command running), it went `working=False` at the Stop and stayed there.
 
 ## Log
 - 2026-10-21: backups; MelonLoader as `winmm.dll`; probe; full mod; plugin; verification above; plugin installed
