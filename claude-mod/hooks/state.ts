@@ -54,7 +54,7 @@ const THINKING = 'thinking'
 
 function clip(text: string, max: number): string {
   const t = text.replace(/\s+/g, ' ').trim()
-  return t.length > max ? t.slice(0, max - 1) + '…' : t
+  return t.length > max ? t.slice(0, max - 1).trimEnd() + '…' : t
 }
 
 function upsertTask(s: SessionState, id: string, subject: string | undefined, done: boolean | undefined): void {
@@ -260,22 +260,79 @@ function plainTimer(timer: string, zh: boolean): string {
 // still does). compact: for the desktop app, where the line shares a row with the model picker and gets cut early —
 // no song, the timer without the pomodoro, and broken features only counted.
 export function statusLine(room: RoomStatus | undefined, now: number, compact = false): string {
+  if (!compact) return statusLines(room, now)[0] ?? '🏠'
   const zh = room?.lang !== 'en'
   const t = (z: string, e: string) => (zh ? z : e)
-  if (!room || typeof room.updatedAt !== 'number' || now - room.updatedAt > 10_000)
-    return compact ? t('🏠 房间离线', '🏠 Room offline')
-      : t('🏠 房间离线 (游戏没开，或 CozyClaude mod 没加载)', '🏠 Room offline (game closed, or the CozyClaude mod not loaded)')
+  if (!fresh_(room, now)) return t('🏠 房间离线', '🏠 Room offline')
   const parts: string[] = []
   if (!room.ready) parts.push(t('房间加载中', 'Room loading'))
-  if (room.blocked) parts.push(compact ? t('联机中', 'Co-op') : t('联机中，暂停联动', 'In co-op, link paused'))
-  if (room.music && !compact) parts.push(`🎵 ${room.music}${room.musicPlaying ? '' : t(' (暂停)', ' (paused)')}`)
-  if (room.timer) parts.push(`⏰ ${plainTimer(compact ? room.timer.split(' · ')[0] ?? room.timer : room.timer, zh)}`)
+  if (room.blocked) parts.push(t('联机中', 'Co-op'))
+  if (room.timer) parts.push(`⏰ ${plainTimer(room.timer.split(' · ')[0] ?? room.timer, zh)}`)
   if (typeof room.claudeTodaySeconds === 'number')
     parts.push(t(`今日 Claude ${duration(room.claudeTodaySeconds)}`, `Claude today ${duration(room.claudeTodaySeconds)}`))
   const broken = Object.entries(room.health ?? {}).filter(([, value]) => value.startsWith('incompatible'))
-  if (compact && broken.length > 0) parts.push(t(`注意：${broken.length} 项不兼容`, `Note: ${broken.length} incompatible`))
-  if (!compact)
-    for (const [key] of broken)
-      parts.push(t(`注意：${FEATURES[key] ?? key}不兼容`, `Note: ${FEATURES_EN[key] ?? key} incompatible`))
+  if (broken.length > 0) parts.push(t(`注意：${broken.length} 项不兼容`, `Note: ${broken.length} incompatible`))
   return `🏠 ${parts.join(' · ')}`
+}
+
+function fresh_(room: RoomStatus | undefined, now: number): room is RoomStatus {
+  return !!room && typeof room.updatedAt === 'number' && now - room.updatedAt <= 10_000
+}
+
+// The terminal summary in versions from longest to shortest; the hint line keeps the longest one that fits beside
+// the engine's own text. The song shows only while it plays.
+export function statusLines(room: RoomStatus | undefined, now: number): string[] {
+  const zh = room?.lang !== 'en'
+  const t = (z: string, e: string) => (zh ? z : e)
+  if (!fresh_(room, now))
+    return [t('🏠 房间离线 (游戏没开，或 CozyClaude mod 没加载)', '🏠 Room offline (game closed, or the CozyClaude mod not loaded)'),
+      t('🏠 房间离线', '🏠 Room offline')]
+  const pre: string[] = []
+  if (!room.ready) pre.push(t('房间加载中', 'Room loading'))
+  if (room.blocked) pre.push(t('联机中，暂停联动', 'In co-op, link paused'))
+  const song = room.music && room.musicPlaying ? room.music : null
+  const timer = room.timer ? `⏰ ${plainTimer(room.timer, zh)}` : null
+  const today = typeof room.claudeTodaySeconds === 'number'
+    ? t(`今日 Claude ${duration(room.claudeTodaySeconds)}`, `Claude today ${duration(room.claudeTodaySeconds)}`) : null
+  const broken = Object.entries(room.health ?? {}).filter(([, value]) => value.startsWith('incompatible'))
+  const warnings = broken.map(([key]) => t(`注意：${FEATURES[key] ?? key}不兼容`, `Note: ${FEATURES_EN[key] ?? key} incompatible`))
+  const warnCount = broken.length > 0 ? [t(`注意：${broken.length} 项不兼容`, `Note: ${broken.length} incompatible`)] : []
+  const line = (...parts: (string | null)[]) => `🏠 ${[...pre, ...parts].filter(Boolean).join(' · ')}`.trimEnd()
+  const variants = [
+    line(song && `🎵 ${song}`, timer, today, ...warnings),
+    line(song && `🎵 ${song}`, timer, ...warnings),
+    line(song && `🎵 ${clip(song, 14)}`, timer, ...warnCount),
+    line(timer, ...warnCount),
+    line(...warnCount),
+  ]
+  return variants.filter((v, i) => variants.indexOf(v) === i)
+}
+
+// Terminal cells a string takes: CJK and emoji two, combining marks and variation selectors none.
+export function displayWidth(text: string): number {
+  let width = 0
+  for (const ch of text) {
+    const c = ch.codePointAt(0) ?? 0
+    if ((c >= 0x300 && c <= 0x36f) || (c >= 0xfe00 && c <= 0xfe0f) || c === 0x200d) continue
+    const wide =
+      (c >= 0x1100 && c <= 0x115f) || c === 0x231a || c === 0x231b || (c >= 0x23e9 && c <= 0x23ec) || c === 0x23f0 ||
+      c === 0x23f3 || (c >= 0x2e80 && c <= 0xa4cf) || (c >= 0xac00 && c <= 0xd7a3) || (c >= 0xf900 && c <= 0xfaff) ||
+      (c >= 0xfe30 && c <= 0xfe4f) || (c >= 0xff00 && c <= 0xff60) || (c >= 0xffe0 && c <= 0xffe6) ||
+      (c >= 0x1f300 && c <= 0x1faff) || c >= 0x20000
+    width += wide ? 2 : 1
+  }
+  return width
+}
+
+// While a turn runs the engine draws pills after its hint text (" · esc to interrupt", " · ctrl+t to hide tasks")
+// that the hint text doesn't include; this much is kept free for them.
+const WORKING_PILLS = 42
+
+// The longest version that fits after the engine's hint text on a line `columns` wide (with the engine's " · "
+// separator and a little slack for its padding). Unknown width: the longest.
+export function fitLine(variants: readonly string[], hint: string, columns: number | undefined, working = false): string | undefined {
+  if (variants.length === 0) return undefined
+  if (!columns) return variants[0]
+  const room = columns - displayWidth(hint) - 3 - 4 - (working ? WORKING_PILLS : 0)
+  return variants.find(v => displayWidth(v) <= room) ?? variants[variants.length - 1]
 }

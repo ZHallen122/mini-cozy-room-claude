@@ -1,8 +1,8 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 import {
-  apply, type CozyEvent, describeTool, fileName, fresh, projectName, type RoomStatus, type SessionState, serialize, statusLine,
-  taskIdFrom,
+  apply, type CozyEvent, describeTool, fileName, fitLine, fresh, projectName, type RoomStatus, type SessionState, serialize,
+  statusLine, statusLines, taskIdFrom,
 } from './state'
 import { type CommandReply, commandFile, replyText, type RoomTool, roomGate, TIMEOUT_TEXT, TOOLS } from './actions'
 
@@ -110,8 +110,8 @@ function startTimers($: EngineInterface): void {
 async function refreshStatus($: EngineInterface): Promise<void> {
   try {
     const room = await readRoom($)
-    const line = statusLine(room, Date.now())
-    if ((await read($, roomLine)) !== line) await update($, roomLine, () => line)
+    const lines = statusLines(room, Date.now())
+    if (JSON.stringify(await read($, roomLine)) !== JSON.stringify(lines)) await update($, roomLine, () => lines)
     // the pinned status is what the desktop app shows, in a narrow slot beside the model picker: the short form
     $.ui.status(tailDrawn ? undefined : statusLine(room, Date.now(), true))
   } catch {
@@ -173,11 +173,13 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
-    const line = await read($, roomLine)
-    if (!line || e.surface !== 'terminal') return next(e)
+    const variants = await read($, roomLine)
+    if (!variants || e.surface !== 'terminal') return next(e)
+    const tail = fitLine(variants, e.props.hint, e.viewport?.columns, e.props.isWorking)
+    if (!tail) return next(e)
     tailDrawn = true
     // the engine puts its own " · " before the tail
-    return next({ ...e, props: { ...e.props, tail: line } })
+    return next({ ...e, props: { ...e.props, tail } })
   }).catch(($, e, next) => next(e))
 
   for (const t of TOOLS) {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'claude-code/testing'
-import { apply, describeTool, fileName, fresh, projectName, serialize, statusLine, taskIdFrom } from './state'
+import { apply, describeTool, displayWidth, fileName, fitLine, fresh, projectName, serialize, statusLine, statusLines, taskIdFrom } from './state'
 
 describe('session state', () => {
   test('a prompt starts work and Stop ends it', async () => {
@@ -93,7 +93,7 @@ describe('status line', () => {
       updatedAt: 1000, ready: true, music: 'Lo-Fi Chill Sound Track - 24', musicPlaying: false,
       timer: '30:16 ⏸ · 🍅 专注 19:23 ⏸', claudeTodaySeconds: 5040,
     }, 1000)
-    expect(line).toBe('🏠 🎵 Lo-Fi Chill Sound Track - 24 (暂停) · ⏰ 30:16 (暂停) · 🍅 专注 19:23 (暂停) · 今日 Claude 1h24m')
+    expect(line).toBe('🏠 ⏰ 30:16 (暂停) · 🍅 专注 19:23 (暂停) · 今日 Claude 1h24m')
     expect(/[⏸⏱⚠♪]/u.test(line)).toBe(false)
   })
 
@@ -112,7 +112,7 @@ describe('status line', () => {
       updatedAt: 1000, ready: true, lang: 'en', music: 'Lo-Fi Chill Sound Track - 24', musicPlaying: false,
       timer: '35:59 (paused) · 🍅 Focus 19:23', claudeTodaySeconds: 5400, health: { Rain: 'incompatible: x' },
     }
-    expect(statusLine(room, 1000)).toBe('🏠 🎵 Lo-Fi Chill Sound Track - 24 (paused) · ⏰ 35:59 (paused) · 🍅 Focus 19:23 · Claude today 1h30m · Note: rain on errors incompatible')
+    expect(statusLine(room, 1000)).toBe('🏠 ⏰ 35:59 (paused) · 🍅 Focus 19:23 · Claude today 1h30m · Note: rain on errors incompatible')
     expect(statusLine(room, 1000, true)).toBe('🏠 ⏰ 35:59 (paused) · Claude today 1h30m · Note: 1 incompatible')
     expect(statusLine({ ...room, updatedAt: 0 }, 60_000, true)).toBe('🏠 Room offline')
   })
@@ -191,5 +191,39 @@ describe('task list', () => {
     expect(taskIdFrom({ task: { id: '7', subject: 'x' } })).toBe('7')
     expect(taskIdFrom('Task #12 created successfully: x')).toBe('12')
     expect(taskIdFrom(undefined)).toBe(undefined)
+  })
+})
+
+describe('fitting the hint line', () => {
+  const room = {
+    updatedAt: 1000, ready: true, lang: 'en', music: 'Prelude in C - Bach', musicPlaying: true, timer: '00:12',
+    claudeTodaySeconds: 7800,
+  }
+  const hint = '⏵⏵ accept edits on (shift+tab to cycle)'
+
+  test('versions go from everything to the essentials', async () => {
+    expect(statusLines(room, 1000)).toEqual([
+      '🏠 🎵 Prelude in C - Bach · ⏰ 00:12 · Claude today 2h10m',
+      '🏠 🎵 Prelude in C - Bach · ⏰ 00:12',
+      '🏠 🎵 Prelude in C… · ⏰ 00:12',
+      '🏠 ⏰ 00:12',
+      '🏠',
+    ])
+  })
+
+  test('keeps the longest version that fits beside the engine text', async () => {
+    const variants = statusLines(room, 1000)
+    expect(fitLine(variants, hint, 200)).toBe(variants[0])
+    // idle, 130 columns: everything fits (what the promo recording showed)
+    expect(fitLine(variants, hint, 130)).toBe(variants[0])
+    // working: the engine's pills take ~42 more columns, and "Claude today" goes first
+    expect(fitLine(variants, hint, 130, true)).toBe('🏠 🎵 Prelude in C - Bach · ⏰ 00:12')
+    expect(fitLine(variants, hint, 100, true)).toBe('🏠 ⏰ 00:12')
+    expect(fitLine(variants, hint, undefined)).toBe(variants[0])
+  })
+
+  test('counts emoji and CJK as two cells', async () => {
+    expect(displayWidth('🏠 ⏰ 00:12')).toBe(11)
+    expect(displayWidth('今日 Claude')).toBe(11)
   })
 })
