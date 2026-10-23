@@ -178,6 +178,23 @@ heartbeat; status line via `$.ui.status` from `room.json`.
   tasks", room.json lang en; back to Chinese (`gmlang 1`), persisted across a restart. Plugin tests 26 pass.
 - Dev console additions: `langs`, `setlang <name>`, `gmlang <index>`.
 
+## Hint-line width and promo (2026-10-22)
+- The hint-line tail is cut by the terminal when it's too long. The plugin now stores the summary as versions from
+  longest to shortest (`statusLines`) and the PromptHint hook keeps the longest that fits (`fitLine`): it measures
+  display width (CJK and emoji 2 cells, combining marks / variation selectors / ZWJ 0), subtracts the hint text,
+  the engine's separator and a margin, and while Claude works another `WORKING_PILLS` (42) cells for the working
+  indicators that aren't part of `props.hint`. The song shows only while music plays. Plugin 0.4.2.
+- Claude Code doesn't give the model `TaskCreate` / `TaskUpdate` by default: they appear only when named in
+  `--allowedTools` or `permissions.allow`. Without them there's no task list to mirror (README says so).
+  Note `--allowedTools` is variadic: put the prompt before it or it's swallowed as a tool name.
+- Promo (`docs/media/hero.png`, `demo.gif`, `demo.mp4`): demo Windows Terminal (130 columns) in an empty
+  `C:\cozy-demo` project, started with `CLAUDE*`, `CLAUDECODE`, `NO_COLOR`, `FORCE_COLOR`, `ANTHROPIC_*` stripped
+  from the environment (otherwise no colour and a child-session warning). Terminal and game recorded as separate
+  windows (`um win record --hwnd` / `--exe`, window-only, no desktop), permission prompts approved with Enter only
+  after checking the demo window is foreground, composed side by side with ffmpeg (game cropped to the room panel
+  and the todo window). Game switched to English for the shoot. Take 6 was recorded with plugin 0.4.1, so the
+  working frames show the tail cut to "· C…"; 0.4.2 fixes that.
+
 ## Log
 - 2026-10-21: backups; MelonLoader as `winmm.dll`; probe; full mod; plugin; verification above; plugin installed
   at user scope from the local folder marketplace `cozy-room-local`. Nothing committed.
@@ -187,3 +204,5 @@ heartbeat; status line via `$.ui.status` from `room.json`.
   list sync, activity line, hidden-window reminder (plugin 0.3.0, game mod 0.4.0).
 - 2026-10-22 (later): status line moved to the prompt hint line's tail (desktop: short pinned form); mod texts
   follow the game's language (game mod 0.4.1, plugin 0.4.0).
+- 2026-10-22 (later): width-aware hint line (plugin 0.4.2); promo hero/GIF/MP4 in `docs/media/`, shown in both
+  READMEs.

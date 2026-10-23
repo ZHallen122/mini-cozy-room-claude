@@ -2,6 +2,8 @@
 
 **English** | [中文](README.zh-CN.md)
 
+![Claude Code fixing a bug in the terminal while the character works at the desk, a "Claude is waiting for you" bubble above it and Claude's task list ticked off in the room](docs/media/hero.png)
+
 Makes the room in [Mini Cozy Room: Lo-Fi](https://store.steampowered.com/app/3511030/) follow what Claude Code is doing:
 
 - When Claude starts working, the character sits down at the desk with the laptop; when Claude stops, the character lies down on the bed (or sofa).
@@ -14,6 +16,10 @@ Makes the room in [Mini Cozy Room: Lo-Fi](https://store.steampowered.com/app/351
 - The stopwatch runs while Claude works, and the end of the hint line under the Claude Code prompt shows the song playing in the room, the timer and how long Claude worked today.
 - When the session ends, the room goes back to how it was before.
 - When you ask in the conversation, Claude can also add memos and todo lists, run the pomodoro, change the song or change the ambience.
+
+![Demo: Claude Code gets a task, makes a task list, asks for approval, fixes the bug and finishes; the room follows each step](docs/media/demo.gif)
+
+<sub>The demo runs at 1.5× speed. [Full-quality MP4](docs/media/demo.mp4).</sub>
 
 **Install: paste the prompt from [INSTALL.md](INSTALL.md) into Claude Code and it installs everything itself.**
 
@@ -54,6 +60,20 @@ The tools Claude uses:
 | `room_ambience` | List ambient sounds / play exactly these / add / stop |
 
 The first time Claude uses one of them, Claude Code asks for your permission like for any other tool.
+
+### Task list sync
+
+Claude Code doesn't give Claude its task tools by default, so without them there's no task list to mirror. To turn them on, add them to `permissions.allow` in `~/.claude/settings.json`:
+
+```json
+{
+  "permissions": {
+    "allow": ["TaskCreate", "TaskUpdate"]
+  }
+}
+```
+
+Lists Claude keeps with the older `TodoWrite` tool are mirrored too.
 
 ## Guarantees
 

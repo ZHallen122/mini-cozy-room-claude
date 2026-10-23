@@ -2,6 +2,8 @@
 
 [English](README.md) | **中文**
 
+![终端里 Claude Code 正在修 bug，房间里的小人坐在桌前，头上是「Claude 在等你确认」的气泡，旁边是 Claude 的任务清单，做完的已经勾上](docs/media/hero.png)
+
 让 [Mini Cozy Room: Lo-Fi](https://store.steampowered.com/app/3511030/) 里的房间跟着 Claude Code 一起动：
 
 - Claude 开始干活，小人坐到桌前用笔记本；Claude 停下，小人去床上（或沙发）躺着。
@@ -14,6 +16,10 @@
 - 秒表跟着 Claude 走，Claude Code 输入框下面那行提示的末尾显示房间里正在放的歌、计时和「今日 Claude 干了多久」。
 - 会话结束后，房间回到会话开始前的样子。
 - 你在对话里开口，Claude 还能在房间里加 memo/todo、开番茄钟、换歌、换环境音。
+
+![演示：Claude Code 接到任务、列出任务清单、请求确认、修好 bug、完成，房间每一步都跟着变](docs/media/demo.gif)
+
+<sub>演示为 1.5 倍速，界面是英文（游戏切成英文时 mod 也显示英文）。[高清 MP4](docs/media/demo.mp4)。</sub>
 
 **安装：把 [INSTALL.zh-CN.md](INSTALL.zh-CN.md) 里的那段 prompt 复制给 Claude Code，它会自己装好。**
 
@@ -54,6 +60,20 @@ Claude 用的工具：
 | `room_ambience` | 列出环境音 / 只放这些 / 加上 / 停掉 |
 
 第一次用某个工具时，Claude Code 会像对其他工具一样问你是否允许。
+
+### 任务清单同步
+
+Claude Code 默认不给 Claude 任务工具，没有它们就没有任务清单可同步。要打开，在 `~/.claude/settings.json` 的 `permissions.allow` 里加上：
+
+```json
+{
+  "permissions": {
+    "allow": ["TaskCreate", "TaskUpdate"]
+  }
+}
+```
+
+Claude 用旧的 `TodoWrite` 工具记的清单也会同步。
 
 ## 设计上的保证
 
