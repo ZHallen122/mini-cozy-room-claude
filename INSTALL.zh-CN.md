@@ -6,8 +6,8 @@
 
 - Windows 10/11，Steam 版 [Mini Cozy Room: Lo-Fi](https://store.steampowered.com/app/3511030/)（至少启动过一次）。
 - [Claude Code](https://claude.com/claude-code) 2.1.299 或更新版本。
-- [Git](https://git-scm.com/download/win) 和 [.NET SDK](https://dotnet.microsoft.com/download)（6 或更新版本，8、9 都行）。
-- 这个仓库的读取权限（它是私有仓库，需要作者邀请你，并在本机登录 GitHub，例如 `gh auth login`）。
+- [Git](https://git-scm.com/download/win)。
+- 可选：[.NET SDK](https://dotnet.microsoft.com/download) 6 或更新版本，只有不用 [Releases](https://github.com/ZHallen122/mini-cozy-room-claude/releases/latest) 里编译好的 DLL、要自己从源码编译时才需要。
 
 ## 让 AI 帮你装（推荐）
 
@@ -23,7 +23,7 @@
 - 同一个问题失败 3 次就停下来，告诉我卡在哪、试过什么。
 - 不要 git commit 或 push 任何东西。
 
-1. 检查环境：Windows、git、dotnet（`dotnet --list-sdks`，需要 6 或更新）、claude（`claude --version`，需要 2.1.299 或更新）。缺什么就告诉我去装，不要替我装系统软件。
+1. 检查环境：Windows、git、claude（`claude --version`，需要 2.1.299 或更新）。缺什么就告诉我去装，不要替我装系统软件。.NET SDK 只有第 7 步需要从源码编译时才用到。
 
 2. 找到游戏目录：默认是 `C:\Program Files (x86)\Steam\steamapps\common\Mini Cozy Room`；不在那里就读 Steam 的 `steamapps\libraryfolders.vdf` 找到 app 3511030 所在的库。确认目录里有 `MiniCozyRoom.exe` 和 `GameAssembly.dll`，并读出 `Version.txt`。
 
@@ -37,11 +37,12 @@
 5. 生成 MelonLoader 的程序集：通过 Steam 启动游戏，例如 PowerShell 里 `Start-Process "steam://rungameid/3511030"`（不要直接运行 exe），等到 `<游戏目录>\MelonLoader\Il2CppAssemblies\Assembly-CSharp.dll` 出现，而且 `<游戏目录>\MelonLoader\Latest.log` 里出现 `Support Module Loaded`（第一次要 1～2 分钟）。然后关闭游戏（征得我同意后用 CloseMainWindow），等进程退出。如果游戏闪退或黑屏退出，把 Latest.log 最后 30 行给我看，并删除 `winmm.dll` 恢复原状。
    然后编辑这次生成的 `<游戏目录>\UserData\Loader.cfg`，只改这三项：`hide_console = true`（不弹 MelonLoader 控制台窗口）、`disable_start_screen = true`（不显示 MelonLoader 启动画面）、`force_offline_generation = true`（启动时不联网查询 MelonLoader 服务器，这个游戏查了也没有数据）。
 
-6. 获取源码：把仓库克隆到用户目录下的 `mini-cozy-room-claude` 文件夹（下面叫「克隆目录」；已经存在就在里面 `git pull`）。克隆失败说明没有权限或没登录 GitHub，告诉我。
+6. 获取源码：把仓库克隆到用户目录下的 `mini-cozy-room-claude` 文件夹（下面叫「克隆目录」；已经存在就在里面 `git pull`）。克隆失败就把错误告诉我。
 
-7. 编译并部署游戏 mod（游戏必须是关闭的），在克隆目录里运行：
-   `dotnet build game-mod -c Release -p:DeployToGame=true -p:GameDir="<游戏目录>"`
-   要求 0 个错误，并确认 `<游戏目录>\Mods\CozyClaude.dll` 存在。
+7. 安装游戏 mod（游戏必须是关闭的）：
+   - 如果第 2 步读到的 `Version.txt` 是 `1.07.01`：下载 https://github.com/ZHallen122/mini-cozy-room-claude/releases/download/v0.4.2/CozyClaude.dll 到一个临时文件夹，核对 SHA256 必须等于 a4a164da45708b51ea301a38364f856e378669d2f7b334c38c597990435c1af9 ，不一致就停下。然后复制到 `<游戏目录>\Mods\CozyClaude.dll`。
+   - 版本不是 1.07.01，或者第 10 步发现 mod 加载失败：改为从源码编译。这需要 .NET SDK 6 或更新（`dotnet --list-sdks`；没装就告诉我去装）。在克隆目录里运行 `dotnet build game-mod -c Release -p:DeployToGame=true -p:GameDir="<游戏目录>"`，要求 0 个错误。
+   - 不管哪种方式，最后都要确认 `<游戏目录>\Mods\CozyClaude.dll` 存在。
 
 8. 安装 Claude Code 插件（路径用克隆目录的绝对路径）：
    `claude plugin marketplace add "<克隆目录>\claude-mod"`
@@ -68,13 +69,14 @@
 2. **装 MelonLoader v0.7.3**：下载 [MelonLoader.x64.zip](https://github.com/LavaGang/MelonLoader/releases/download/v0.7.3/MelonLoader.x64.zip)，解压到游戏目录，**把 `version.dll` 改名为 `winmm.dll`**。
 3. **启动一次游戏**：从 Steam 启动，等 1～2 分钟，直到 `MelonLoader\Il2CppAssemblies\` 生成，然后关掉游戏。
    再打开游戏目录里的 `UserData\Loader.cfg`，把 `hide_console`、`disable_start_screen`、`force_offline_generation` 三项改成 `true`：不弹控制台窗口、不显示启动画面、启动时不联网查询。
-4. **编译游戏 mod**：克隆本仓库，在仓库目录里运行（游戏目录不是默认位置时加 `-p:GameDir="..."`）：
+4. **安装游戏 mod**：从[最新 Release](https://github.com/ZHallen122/mini-cozy-room-claude/releases/latest)下载 `CozyClaude.dll`，放进游戏目录的 `Mods\` 文件夹。Release 说明里写了 SHA256 和测试过的游戏版本。
+   想自己从源码编译（需要 .NET SDK 6+）：克隆本仓库，在仓库目录里运行（游戏目录不是默认位置时加 `-p:GameDir="..."`）：
 
 ```bash
 dotnet build game-mod -c Release -p:DeployToGame=true
 ```
 
-5. **装 Claude Code 插件**（把路径换成你克隆的位置）：
+5. **装 Claude Code 插件**：克隆本仓库，然后运行（把路径换成你克隆的位置）：
 
 ```bash
 claude plugin marketplace add "C:/path/to/mini-cozy-room-claude/claude-mod"
@@ -98,14 +100,10 @@ claude plugin install cozy-room@cozy-room-local --scope user
 
 ## 更新
 
-在仓库目录里拉最新代码，关掉游戏后重新编译：
+关掉游戏，用[最新 Release](https://github.com/ZHallen122/mini-cozy-room-claude/releases/latest)里的 `CozyClaude.dll` 替换 `Mods\CozyClaude.dll`（或者从源码重新编译）。然后在克隆目录里拉最新代码：
 
 ```bash
 git pull
-```
-
-```bash
-dotnet build game-mod -c Release -p:DeployToGame=true
 ```
 
 再更新插件，然后重开 Claude Code 会话：
@@ -118,7 +116,7 @@ claude plugin marketplace update cozy-room-local
 claude plugin update cozy-room@cozy-room-local
 ```
 
-（维护者改了 `claude-mod/` 时要把 `claude-mod/.claude-plugin/plugin.json` 的 `version` 加一，否则 `plugin update` 不会拿到新代码。）
+（维护者改了 `claude-mod/` 时要把 `claude-mod/.claude-plugin/plugin.json` 的 `version` 加一，否则 `plugin update` 不会拿到新代码。发布用的 DLL 要加 `-p:DebugType=none` 编译，避免里面带上本机路径。）
 
 ## 卸载
 

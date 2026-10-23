@@ -24,9 +24,9 @@ A mod that links [Mini Cozy Room: Lo-Fi](https://store.steampowered.com/app/3511
 
 ## Install
 
-**Requirements:** Windows 10/11, the Steam version of the game, Claude Code 2.1.299+, Git and the .NET SDK 6+.
+**Requirements:** Windows 10/11, the Steam version of the game, Claude Code 2.1.299+ and Git. The game mod ships as a prebuilt DLL in [Releases](https://github.com/ZHallen122/mini-cozy-room-claude/releases/latest); the .NET SDK is only needed to build from source.
 
-Paste the prompt from [INSTALL.md](INSTALL.md) into a new Claude Code session. The agent backs up your saves, installs MelonLoader, builds and deploys the mod, installs the plugin and turns on Claude's task tools. It asks before every change. The same page covers manual install, updating and uninstalling.
+Paste the prompt from [INSTALL.md](INSTALL.md) into a new Claude Code session. The agent backs up your saves, installs MelonLoader and the mod, installs the plugin and turns on Claude's task tools. It asks before every change. The same page covers manual install, updating and uninstalling.
 
 ## Usage
 

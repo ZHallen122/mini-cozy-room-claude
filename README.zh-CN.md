@@ -24,9 +24,9 @@
 
 ## 安装
 
-**环境要求**：Windows 10/11、Steam 版游戏、Claude Code 2.1.299 以上、Git、.NET SDK 6 以上。
+**环境要求**：Windows 10/11、Steam 版游戏、Claude Code 2.1.299 以上、Git。游戏 mod 在 [Releases](https://github.com/ZHallen122/mini-cozy-room-claude/releases/latest) 里有编译好的 DLL，只有从源码编译才需要 .NET SDK。
 
-把 [INSTALL.zh-CN.md](INSTALL.zh-CN.md) 里的 prompt 复制到一个新的 Claude Code 会话里。Agent 会备份存档、安装 MelonLoader、编译部署 mod、安装插件、打开 Claude 的任务工具，每一步改动前都会先问你。手动安装、更新和卸载也在那一页。
+把 [INSTALL.zh-CN.md](INSTALL.zh-CN.md) 里的 prompt 复制到一个新的 Claude Code 会话里。Agent 会备份存档、安装 MelonLoader 和 mod、安装插件、打开 Claude 的任务工具，每一步改动前都会先问你。手动安装、更新和卸载也在那一页。
 
 ## 使用
 

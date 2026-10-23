@@ -6,7 +6,8 @@
 
 - Windows 10/11 and the Steam version of [Mini Cozy Room: Lo-Fi](https://store.steampowered.com/app/3511030/) (started at least once).
 - [Claude Code](https://claude.com/claude-code) 2.1.299 or newer.
-- [Git](https://git-scm.com/download/win) and the [.NET SDK](https://dotnet.microsoft.com/download) (6 or newer; 8 and 9 work).
+- [Git](https://git-scm.com/download/win).
+- Optional: the [.NET SDK](https://dotnet.microsoft.com/download) 6 or newer, only to build the game mod from source instead of using the prebuilt DLL from the [releases](https://github.com/ZHallen122/mini-cozy-room-claude/releases/latest).
 
 ## Let an AI agent install it (recommended)
 
@@ -22,7 +23,7 @@ Rules:
 - If the same problem fails 3 times, stop and tell me where you are stuck and what you tried.
 - Don't git commit or push anything.
 
-1. Check the setup: Windows, git, dotnet (`dotnet --list-sdks`, needs 6 or newer), claude (`claude --version`, needs 2.1.299 or newer). If something is missing, tell me to install it; don't install system software for me.
+1. Check the setup: Windows, git, claude (`claude --version`, needs 2.1.299 or newer). If something is missing, tell me to install it; don't install system software for me. The .NET SDK is only needed if step 7 has to build from source.
 
 2. Find the game folder: by default `C:\Program Files (x86)\Steam\steamapps\common\Mini Cozy Room`; otherwise read Steam's `steamapps\libraryfolders.vdf` to find the library holding app 3511030. Confirm the folder contains `MiniCozyRoom.exe` and `GameAssembly.dll`, and read `Version.txt`.
 
@@ -36,11 +37,12 @@ Rules:
 5. Generate MelonLoader's assemblies: start the game through Steam, for example in PowerShell `Start-Process "steam://rungameid/3511030"` (don't run the exe directly). Wait until `<game folder>\MelonLoader\Il2CppAssemblies\Assembly-CSharp.dll` exists and `<game folder>\MelonLoader\Latest.log` contains `Support Module Loaded` (1–2 minutes the first time). Then close the game (with my OK, through CloseMainWindow) and wait for the process to exit. If the game crashes or exits on a black screen, show me the last 30 lines of Latest.log and delete `winmm.dll` to undo the install.
    Then edit the newly created `<game folder>\UserData\Loader.cfg` and change only these three settings: `hide_console = true` (no MelonLoader console window), `disable_start_screen = true` (no MelonLoader start screen), `force_offline_generation = true` (no call to MelonLoader's server at every start; it has no data for this game anyway).
 
-6. Get the source: clone the repository into a `mini-cozy-room-claude` folder in my user folder (called "the clone" below; if it already exists, run `git pull` in it). If cloning fails, I lack access or am not signed in to GitHub; tell me.
+6. Get the source: clone the repository into a `mini-cozy-room-claude` folder in my user folder (called "the clone" below; if it already exists, run `git pull` in it). If cloning fails, tell me the error.
 
-7. Build and deploy the game mod (the game must be closed). In the clone, run:
-   `dotnet build game-mod -c Release -p:DeployToGame=true -p:GameDir="<game folder>"`
-   It must finish with 0 errors, and `<game folder>\Mods\CozyClaude.dll` must exist.
+7. Install the game mod (the game must be closed):
+   - If `Version.txt` (step 2) is `1.07.01`: download https://github.com/ZHallen122/mini-cozy-room-claude/releases/download/v0.4.2/CozyClaude.dll into a temporary folder. Its SHA256 must be a4a164da45708b51ea301a38364f856e378669d2f7b334c38c597990435c1af9 ; stop if it isn't. Copy it to `<game folder>\Mods\CozyClaude.dll`.
+   - Otherwise, or if step 10 shows the mod failing to load: build it from source instead. That needs the .NET SDK 6 or newer (`dotnet --list-sdks`; if missing, tell me to install it). In the clone, run `dotnet build game-mod -c Release -p:DeployToGame=true -p:GameDir="<game folder>"`; it must finish with 0 errors.
+   - Either way, `<game folder>\Mods\CozyClaude.dll` must exist.
 
 8. Install the Claude Code plugin (use the clone's absolute path):
    `claude plugin marketplace add "<clone>\claude-mod"`
@@ -67,13 +69,14 @@ Rules:
 2. **Install MelonLoader v0.7.3**: download [MelonLoader.x64.zip](https://github.com/LavaGang/MelonLoader/releases/download/v0.7.3/MelonLoader.x64.zip), extract it into the game folder, and **rename `version.dll` to `winmm.dll`**.
 3. **Start the game once**: start it from Steam and wait 1–2 minutes until `MelonLoader\Il2CppAssemblies\` exists, then close the game.
    Open `UserData\Loader.cfg` in the game folder and set `hide_console`, `disable_start_screen` and `force_offline_generation` to `true`: no console window, no start screen, no server call at startup.
-4. **Build the game mod**: clone this repository and run this in it (add `-p:GameDir="..."` if the game isn't in the default folder):
+4. **Install the game mod**: download `CozyClaude.dll` from the [latest release](https://github.com/ZHallen122/mini-cozy-room-claude/releases/latest) and put it in the game's `Mods\` folder. The release notes list the SHA256 and the game version it was tested with.
+   To build it from source instead (needs the .NET SDK 6+), run this in a clone of this repository (add `-p:GameDir="..."` if the game isn't in the default folder):
 
 ```bash
 dotnet build game-mod -c Release -p:DeployToGame=true
 ```
 
-5. **Install the Claude Code plugin** (replace the path with where you cloned it):
+5. **Install the Claude Code plugin**: clone this repository, then run (replace the path with where you cloned it):
 
 ```bash
 claude plugin marketplace add "C:/path/to/mini-cozy-room-claude/claude-mod"
@@ -97,17 +100,13 @@ claude plugin install cozy-room@cozy-room-local --scope user
 
 ## Update
 
-In the clone, pull the latest code and rebuild with the game closed:
+With the game closed, replace `Mods\CozyClaude.dll` with the one from the [latest release](https://github.com/ZHallen122/mini-cozy-room-claude/releases/latest) (or rebuild it from source). Then pull the latest code in the clone:
 
 ```bash
 git pull
 ```
 
-```bash
-dotnet build game-mod -c Release -p:DeployToGame=true
-```
-
-Then update the plugin and start a new Claude Code session:
+Update the plugin and start a new Claude Code session:
 
 ```bash
 claude plugin marketplace update cozy-room-local
@@ -117,7 +116,7 @@ claude plugin marketplace update cozy-room-local
 claude plugin update cozy-room@cozy-room-local
 ```
 
-(Maintainers: after changing `claude-mod/`, bump `version` in `claude-mod/.claude-plugin/plugin.json`, or `plugin update` won't pick up the new code.)
+(Maintainers: after changing `claude-mod/`, bump `version` in `claude-mod/.claude-plugin/plugin.json`, or `plugin update` won't pick up the new code. Build release DLLs with `-p:DebugType=none` so no local paths end up in them.)
 
 ## Uninstall
 
