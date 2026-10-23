@@ -40,7 +40,7 @@ Rules:
 6. Get the source: clone the repository into a `mini-cozy-room-claude` folder in my user folder (called "the clone" below; if it already exists, run `git pull` in it). If cloning fails, tell me the error.
 
 7. Install the game mod (the game must be closed):
-   - If `Version.txt` (step 2) is `1.07.01`: download https://github.com/ZHallen122/mini-cozy-room-claude/releases/download/v0.4.2/CozyClaude.dll into a temporary folder. Its SHA256 must be a4a164da45708b51ea301a38364f856e378669d2f7b334c38c597990435c1af9 ; stop if it isn't. Copy it to `<game folder>\Mods\CozyClaude.dll`.
+   - If `Version.txt` (step 2) is `1.07.01`: download https://github.com/ZHallen122/mini-cozy-room-claude/releases/download/v0.5.1/CozyClaude.dll into a temporary folder. Its SHA256 must be ab57772974b76c8fc106c679c033d7bad7dccce7dd9d98f02ed13a002345a550 ; stop if it isn't. Copy it to `<game folder>\Mods\CozyClaude.dll`.
    - Otherwise, or if step 9 shows the mod failing to load: build it from source instead. That needs the .NET SDK 6 or newer (`dotnet --list-sdks`; if missing, tell me to install it). In the clone, run `dotnet build game-mod -c Release -p:DeployToGame=true -p:GameDir="<game folder>"`; it must finish with 0 errors.
    - Either way, `<game folder>\Mods\CozyClaude.dll` must exist.
 

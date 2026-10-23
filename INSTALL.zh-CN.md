@@ -40,7 +40,7 @@
 6. 获取源码：把仓库克隆到用户目录下的 `mini-cozy-room-claude` 文件夹（下面叫「克隆目录」；已经存在就在里面 `git pull`）。克隆失败就把错误告诉我。
 
 7. 安装游戏 mod（游戏必须是关闭的）：
-   - 如果第 2 步读到的 `Version.txt` 是 `1.07.01`：下载 https://github.com/ZHallen122/mini-cozy-room-claude/releases/download/v0.4.2/CozyClaude.dll 到一个临时文件夹，核对 SHA256 必须等于 a4a164da45708b51ea301a38364f856e378669d2f7b334c38c597990435c1af9 ，不一致就停下。然后复制到 `<游戏目录>\Mods\CozyClaude.dll`。
+   - 如果第 2 步读到的 `Version.txt` 是 `1.07.01`：下载 https://github.com/ZHallen122/mini-cozy-room-claude/releases/download/v0.5.1/CozyClaude.dll 到一个临时文件夹，核对 SHA256 必须等于 ab57772974b76c8fc106c679c033d7bad7dccce7dd9d98f02ed13a002345a550 ，不一致就停下。然后复制到 `<游戏目录>\Mods\CozyClaude.dll`。
    - 版本不是 1.07.01，或者第 9 步发现 mod 加载失败：改为从源码编译。这需要 .NET SDK 6 或更新（`dotnet --list-sdks`；没装就告诉我去装）。在克隆目录里运行 `dotnet build game-mod -c Release -p:DeployToGame=true -p:GameDir="<游戏目录>"`，要求 0 个错误。
    - 不管哪种方式，最后都要确认 `<游戏目录>\Mods\CozyClaude.dll` 存在。
 

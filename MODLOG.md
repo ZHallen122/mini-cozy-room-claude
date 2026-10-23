@@ -272,3 +272,5 @@ heartbeat; status line via `$.ui.status` from `room.json`.
   the v0.4.2 DLL.
 - 2026-10-23 (later): plugin 0.5.1 counts a silent successful `gh pr merge`; promo v2 (merge celebration +
   sleepy character, no task list).
+- 2026-10-23 (later): released v0.5.1 (game mod 0.5.0 DLL, sha256 ab577729...a550, built with `DebugType=none`;
+  plugin 0.5.1). INSTALL points at it. Release DLL loaded in game: all 17 features ok.
